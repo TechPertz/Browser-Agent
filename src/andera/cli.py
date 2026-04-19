@@ -75,6 +75,27 @@ def run(
 
 
 @app.command()
+def resume(
+    run_id: str = typer.Argument(..., help="Existing run id under runs/."),
+    profile_path: Path | None = typer.Option(None, "--profile", help="Alt profile.yaml path."),
+) -> None:
+    """Resume a previously-started run after a crash or Ctrl-C."""
+    load_dotenv()
+    from andera.orchestrator import resume as orchestrator_resume
+
+    profile = load_profile(profile_path)
+    result = asyncio.run(orchestrator_resume(profile=profile, run_id=run_id))
+    typer.echo(json.dumps({
+        "run_id": result.run_id,
+        "total": result.total,
+        "passed": result.passed,
+        "failed": result.failed,
+        "evidence_root": str(result.run_root),
+    }, indent=2))
+    raise typer.Exit(0 if result.failed == 0 else 1)
+
+
+@app.command()
 def check() -> None:
     """Smoke-check: profile loads, DB init, browser launches example.com."""
     from andera.browser import BrowserPool

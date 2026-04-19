@@ -5,21 +5,24 @@ Flow per run:
     load_inputs -> materialize Samples -> enqueue sample_ids
     spawn N workers, each:
         dequeue -> acquire browser session from pool -> run LangGraph ->
-        write result.json + append row to aggregate CSV -> ack/nack
-    finalize: return RunResult + emit RUN_MANIFEST.json
+        write sample row to samples.jsonl -> ack/nack
+    finalize: rebuild output.csv from samples.jsonl + emit RUN_MANIFEST.json
 
-Safety:
+Durability:
   - Queue claim-lease means two workers never take the same sample.
-  - Each sample has its own browser context (pool) and LangGraph
-    checkpoint thread, so a crashed sample cannot corrupt its neighbor.
-  - LiteLLM retries + bounded reflection mean no infinite loops.
-  - On worker exception, nack() requeues up to max_attempts.
+  - samples.jsonl is the append-only source of truth for extracted data.
+  - In-memory footprint is per-sample-counters, not the full result list,
+    so 10k samples don't balloon RAM.
+  - A Ctrl-C / SIGTERM drains in-flight samples (within a grace window)
+    then exits. `andera resume <run_id>` picks up where we stopped.
 """
 
 from __future__ import annotations
 
 import asyncio
 import csv
+import json
+import signal
 import traceback
 import uuid
 from dataclasses import dataclass, field
@@ -36,6 +39,9 @@ from andera.storage import AuditLog, FilesystemArtifactStore, write_manifest
 from andera.tools.browser import BrowserTools
 
 from .inputs import load_inputs
+
+
+SHUTDOWN_GRACE_S = 60.0
 
 
 @dataclass
@@ -92,14 +98,18 @@ class RunWorkflow:
         input_rows: list[dict[str, Any]],
         run_id: str | None = None,
         max_samples: int | None = None,
+        resuming: bool = False,
     ) -> None:
         self.profile = profile
         self.task = task
         self.run_id = run_id or f"run-{uuid.uuid4().hex[:8]}"
         self.rows = input_rows[:max_samples] if max_samples else input_rows
+        self.resuming = resuming
 
         self.run_root = Path("runs") / self.run_id
         self.run_root.mkdir(parents=True, exist_ok=True)
+        self.samples_jsonl = self.run_root / "samples.jsonl"
+        self.run_config_path = self.run_root / ".run_config.json"
         self.store = FilesystemArtifactStore(self.run_root)
         self.pool = _pool_for(profile, self.store)
         self.plan_cache = PlanCache()
@@ -108,14 +118,56 @@ class RunWorkflow:
         self.queue = SqliteQueue(Path("data") / f"{self.run_id}.queue.db")
         self.audit = AuditLog(Path("data") / f"{self.run_id}.audit.db")
 
-        self._results: list[dict[str, Any]] = []
+        # Memory-bounded counters instead of full result list.
+        self._counters = {"total": 0, "passed": 0, "failed": 0}
+        self._completed_ids: set[str] = set()
         self._results_lock = asyncio.Lock()
+        self._stop_event: asyncio.Event | None = None
+
+    # --- durability helpers ---
+
+    def _save_run_config(self) -> None:
+        """Persist enough to resume the run after a process restart."""
+        self.run_config_path.write_text(json.dumps({
+            "run_id": self.run_id,
+            "task": self.task,
+            "max_samples_applied": len(self.rows),
+        }, indent=2))
+
+    def _append_sample_jsonl(self, row: dict[str, Any]) -> None:
+        with self.samples_jsonl.open("a") as f:
+            f.write(json.dumps(row, ensure_ascii=False, default=str) + "\n")
+
+    def _load_completed_from_disk(self) -> None:
+        """On resume: rebuild completed-set + counters from samples.jsonl."""
+        if not self.samples_jsonl.exists():
+            return
+        with self.samples_jsonl.open() as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except Exception:
+                    continue
+                sid = row.get("sample_id")
+                if not sid or sid in self._completed_ids:
+                    continue
+                self._completed_ids.add(sid)
+                self._counters["total"] += 1
+                if row.get("verdict") == "pass":
+                    self._counters["passed"] += 1
+                else:
+                    self._counters["failed"] += 1
 
     # --- sample plumbing ---
 
     async def _enqueue_all(self) -> None:
         for idx, row in enumerate(self.rows):
             sample_id = f"{self.run_id}-{idx:05d}"
+            if sample_id in self._completed_ids:
+                continue
             await self.queue.enqueue({
                 "sample_id": sample_id,
                 "row_index": idx,
@@ -124,14 +176,11 @@ class RunWorkflow:
             })
 
     async def _run_one(self, job: dict[str, Any]) -> dict[str, Any]:
-        """Execute one sample through the LangGraph. Returns result dict."""
         sample_id = job["sample_id"]
         self.audit.append(
             kind="sample.started", run_id=self.run_id, sample_id=sample_id,
             payload={"row_index": job.get("row_index")},
         )
-        # Optional screencast — only when profile enables it. Frames go to
-        # the EventBus so the /api/screencast WebSocket can relay them.
         cast = None
         if self.profile.browser.screencast:
             from andera.api.ws import get_bus
@@ -177,6 +226,7 @@ class RunWorkflow:
             "verdict": final.get("verdict"),
             "verdict_reason": final.get("verdict_reason"),
             "extracted": final.get("extracted") or {},
+            "evidence": final.get("evidence") or [],
             "evidence_count": len(final.get("evidence") or []),
             "status": final.get("status"),
             "error": final.get("error"),
@@ -188,20 +238,31 @@ class RunWorkflow:
         )
         return result
 
+    async def _record_result(self, result: dict[str, Any]) -> None:
+        async with self._results_lock:
+            sid = result["sample_id"]
+            if sid in self._completed_ids:
+                return  # idempotent on resume
+            self._completed_ids.add(sid)
+            self._counters["total"] += 1
+            if result.get("verdict") == "pass":
+                self._counters["passed"] += 1
+            else:
+                self._counters["failed"] += 1
+            self._append_sample_jsonl(result)
+
     async def _worker(self, worker_id: int) -> None:
         while True:
+            if self._stop_event is not None and self._stop_event.is_set():
+                return
             job = await self.queue.dequeue()
             if job is None:
-                # Queue drained; short sleep then recheck. When every
-                # worker sees None we could exit, but the outer loop
-                # handles termination via a global "pending==0" check.
                 return
             item_id = job["item_id"]
             try:
                 res = await self._run_one(job)
-                async with self._results_lock:
-                    self._results.append(res)
-                if res["verdict"] == "pass" or res["status"] == "done":
+                await self._record_result(res)
+                if res.get("verdict") == "pass" or res.get("status") == "done":
                     await self.queue.ack(item_id)
                 else:
                     await self.queue.nack(item_id, res.get("error") or "no verdict")
@@ -209,45 +270,71 @@ class RunWorkflow:
                 err = f"{type(e).__name__}: {e}"
                 await self.queue.nack(item_id, err)
 
+    def _install_signal_handlers(self) -> None:
+        """Cooperative shutdown on SIGTERM/SIGINT. Best-effort: non-POSIX
+        platforms (or tests running inside other event loops) may skip."""
+        if self._stop_event is None:
+            self._stop_event = asyncio.Event()
+        loop = asyncio.get_event_loop()
+        def _handler(*_a):
+            self._stop_event.set()  # type: ignore[union-attr]
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            try:
+                loop.add_signal_handler(sig, _handler)
+            except (NotImplementedError, RuntimeError, ValueError):
+                pass
+
     async def execute(self) -> RunResult:
-        self.audit.append(
-            kind="run.started", run_id=self.run_id,
-            payload={"task": self.task.get("task_id"), "total": len(self.rows)},
-        )
+        self._save_run_config()
+        self._install_signal_handlers()
+
+        if self.resuming:
+            # Pull any prior completions into our counters + skip set.
+            self._load_completed_from_disk()
+            # Rescue claims left by a crashed process.
+            reclaimed = await self.queue.reclaim_stale(older_than_seconds=0)
+            self.audit.append(
+                kind="run.started", run_id=self.run_id,
+                payload={
+                    "resumed": True, "already_completed": len(self._completed_ids),
+                    "reclaimed_stale": reclaimed,
+                },
+            )
+        else:
+            self.audit.append(
+                kind="run.started", run_id=self.run_id,
+                payload={"task": self.task.get("task_id"), "total": len(self.rows)},
+            )
+
         await self._enqueue_all()
 
         n = max(1, self.profile.browser.concurrency)
         while True:
             await asyncio.gather(*[self._worker(i) for i in range(n)])
+            if self._stop_event is not None and self._stop_event.is_set():
+                break
             counts = await self.queue.counts()
             if counts.get("pending", 0) == 0:
                 break
-        # All pending drained; final run rolled up.
 
-        passed = sum(1 for r in self._results if r.get("verdict") == "pass")
-        failed = len(self._results) - passed
+        passed = self._counters["passed"]
+        failed = self._counters["failed"]
+        total = self._counters["total"]
 
         csv_path = self.run_root / "output.csv"
-        self._write_aggregate_csv(csv_path)
+        self._rebuild_csv_from_jsonl(csv_path)
 
         self.audit.append(
             kind="run.completed", run_id=self.run_id,
-            payload={"passed": passed, "failed": failed},
+            payload={"passed": passed, "failed": failed, "total": total},
         )
         audit_root = self.audit.root_hash(run_id=self.run_id)
+        samples_summary = self._samples_summary_from_jsonl()
         manifest_path = write_manifest(
             run_root=self.run_root,
             run_id=self.run_id,
             task=self.task,
-            samples=[{
-                "sample_id": r["sample_id"],
-                "row_index": r["row_index"],
-                "verdict": r.get("verdict"),
-                "verdict_reason": r.get("verdict_reason"),
-                "status": r.get("status"),
-                "evidence_count": r.get("evidence_count"),
-                "error": r.get("error"),
-            } for r in self._results],
+            samples=samples_summary,
             audit_root_hash=audit_root,
             profile_excerpt={
                 "planner": self.profile.models.planner.model,
@@ -259,22 +346,57 @@ class RunWorkflow:
         return RunResult(
             run_id=self.run_id,
             run_root=self.run_root,
-            total=len(self._results),
+            total=total,
             passed=passed,
             failed=failed,
-            extracted_rows=[r.get("extracted") or {} for r in self._results],
+            extracted_rows=[s.get("extracted") or {} for s in samples_summary],
             aggregate_csv=csv_path,
             manifest=manifest_path,
         )
 
-    def _write_aggregate_csv(self, path: Path) -> None:
-        if not self._results:
+    # --- durability rendering ---
+
+    def _iter_sample_rows(self):
+        if not self.samples_jsonl.exists():
+            return
+        with self.samples_jsonl.open() as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    yield json.loads(line)
+                except Exception:
+                    continue
+
+    def _samples_summary_from_jsonl(self) -> list[dict[str, Any]]:
+        """Compact per-sample dicts for RUN_MANIFEST (no evidence arrays)."""
+        seen: dict[str, dict[str, Any]] = {}
+        for row in self._iter_sample_rows():
+            sid = row.get("sample_id")
+            if not sid:
+                continue
+            seen[sid] = {
+                "sample_id": sid,
+                "row_index": row.get("row_index"),
+                "verdict": row.get("verdict"),
+                "verdict_reason": row.get("verdict_reason"),
+                "status": row.get("status"),
+                "evidence_count": row.get("evidence_count"),
+                "extracted": row.get("extracted") or {},
+                "error": row.get("error"),
+            }
+        return sorted(seen.values(), key=lambda s: s.get("row_index") or 0)
+
+    def _rebuild_csv_from_jsonl(self, path: Path) -> None:
+        """Emit aggregate CSV from the durable JSONL source of truth."""
+        rows = self._samples_summary_from_jsonl()
+        if not rows:
             path.write_text("")
             return
-        # Collect all keys from extracted payloads so columns are stable.
         keys: list[str] = []
         seen: set[str] = set()
-        for r in self._results:
+        for r in rows:
             for k in (r.get("extracted") or {}).keys():
                 if k not in seen:
                     seen.add(k)
@@ -282,7 +404,7 @@ class RunWorkflow:
         with path.open("w", newline="") as f:
             w = csv.writer(f)
             w.writerow(["sample_id", "row_index", "verdict", *keys])
-            for r in sorted(self._results, key=lambda x: x.get("row_index", 0)):
+            for r in rows:
                 extracted = r.get("extracted") or {}
                 w.writerow([
                     r.get("sample_id"),
@@ -290,7 +412,6 @@ class RunWorkflow:
                     r.get("verdict"),
                     *[extracted.get(k, "") for k in keys],
                 ])
-
 
 
 async def run(
@@ -315,3 +436,27 @@ async def run(
     except Exception:
         traceback.print_exc()
         raise
+
+
+async def resume(*, profile: Profile, run_id: str) -> RunResult:
+    """Resume a previously-started run from its durable state.
+
+    Requires `runs/<run_id>/.run_config.json` + `data/<run_id>.queue.db`
+    to exist. Any claimed-but-never-acked samples are released and
+    retried by the new workers.
+    """
+    run_root = Path("runs") / run_id
+    cfg_path = run_root / ".run_config.json"
+    if not cfg_path.exists():
+        raise FileNotFoundError(f"run config missing: {cfg_path}")
+    cfg = json.loads(cfg_path.read_text())
+    task = cfg["task"]
+    # No re-enqueue of input rows needed: queue remembers pending items.
+    wf = RunWorkflow(
+        profile=profile,
+        task=task,
+        input_rows=[],  # nothing to enqueue; queue persists work items
+        run_id=run_id,
+        resuming=True,
+    )
+    return await wf.execute()
