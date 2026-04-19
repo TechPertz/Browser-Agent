@@ -377,19 +377,98 @@ curl localhost:8000/api/runs/<id>/samples
 
 ---
 
+## Phase 5c — Politeness + stealth (~1.5h)
+
+**Goal:** agent behaves like a human at scale — doesn't hammer target
+hosts, doesn't get bot-flagged, honors rate limits when sites push back.
+Prerequisite for LinkedIn / Workday / any bot-sensitive site.
+
+**Deliverables:**
+- `src/andera/browser/rate_limiter.py` — per-host token-bucket + queue.
+  `browser.per_host_rps` + `browser.per_host_burst` in profile.yaml.
+- `src/andera/browser/stealth.py` — applies `playwright-stealth` or an
+  inlined equivalent (removes navigator.webdriver, patches plugins/
+  languages/permissions) before each `new_context()`. Gated on
+  `profile.browser.stealth=true`.
+- User-agent + viewport randomization per context.
+- Target-site 429/503 backoff: browser tool calls detect HTTP status
+  and emit a `wait_for` with exponential backoff + jitter before retry.
+- Optional `robots.txt` check in a "respect_robots" mode (off by default
+  for authorized testing; on for public scraping).
+
+**Acceptance test:**
+```bash
+uv run pytest tests/unit/browser/test_rate_limiter.py -q
+# - 3 workers, per_host_rps=2 -> observed request rate per host <= 2/sec
+# - separate hosts do not interfere
+# - 429 response triggers exponential backoff with jitter
+```
+
+---
+
+## Phase 5d — Fault tolerance + scale hardening (~1h)
+
+**Goal:** a run that crashes at sample 700/1000 resumes at 700, not 0.
+Memory footprint doesn't grow linearly with sample count.
+
+**Deliverables:**
+- `andera resume <run_id>` — reads the run's checkpoint DB + queue,
+  reclaims stale claims, re-spawns workers against the remaining
+  pending rows. Preserves the existing run_id and appends to the
+  same audit log.
+- Startup hook: orchestrator calls `SqliteQueue.reclaim_stale()` on
+  boot so any run started before a crash is recoverable.
+- Graceful SIGTERM: orchestrator catches signal, stops accepting new
+  jobs, lets in-flight samples finish (up to a 60s grace), then exits.
+- Streaming aggregate CSV: `output.csv` is flushed per-sample rather
+  than written once at the end, so a Ctrl-C still leaves a usable CSV.
+- Memory-bounded results: completed samples are persisted and evicted
+  from `self._results` once reflected in the CSV + manifest roll-up.
+
+**Acceptance test:**
+```bash
+uv run andera run config/tasks/03-github-issue.yaml -i rows_1000.csv &
+sleep 30 && kill -TERM %1        # graceful shutdown
+uv run andera resume <run_id>     # resumes; total samples processed = 1000
+```
+
+---
+
+## Phase 5e — Task library (~1h)
+
+**Goal:** all 5 spec tasks shippable as one YAML each. Without these,
+"generality" is a claim, not a demo.
+
+**Deliverables:**
+- `config/tasks/01-github-workday-join.yaml` — enrichment across both systems
+- `config/tasks/02-linear-screenshots.yaml` — ticket metadata (baseline task)
+- `config/tasks/03-github-commits-audit.yaml` — nested PR/CI/Jira drilldown
+- `config/tasks/04-linkedin-enrichment.yaml` — concurrency=1 override,
+  Google snippet fallback hint
+- `config/tasks/05-workday-form-download.yaml` — fill form, submit,
+  capture confirmation + any attachments the mock emits
+- Each YAML carries the right `task_type` hint so the classifier +
+  specialist planner routing hits the right specialist first time.
+
+**Acceptance test:**
+```bash
+for t in config/tasks/0{1..5}-*.yaml; do
+  uv run andera run -t "$t" -i tests/fixtures/$(basename $t .yaml).csv --max-samples 3
+done
+# each run exits 0 (or reasonable fail for LinkedIn if no cookies); evidence folders present
+```
+
+---
+
 ## Phase 6 — Planner + task library (~1.5h)
 
-**Goal:** user types English, gets a runnable RunSpec.
+**Goal:** user types English, gets a runnable RunSpec. Complements the
+pre-built library in Phase 5e.
 
 **Deliverables:**
 - `src/andera/planner/planner.py` — `plan(task_nl: str, input_schema: dict) -> RunSpec`
 - `src/andera/planner/prompts/` — system + few-shot
-- `config/tasks/`: all 5 prebuilt RunSpecs
-  - `01-github-workday-join.yaml`
-  - `02-linear-screenshots.yaml` (already from Phase 2)
-  - `03-github-commits-audit.yaml`
-  - `04-linkedin-enrichment.yaml`
-  - `05-workday-form-download.yaml`
+- 5 prebuilt RunSpecs already shipped in Phase 5e.
 - API: `POST /api/plan` with `{task_nl, input_file}` → RunSpec preview
 
 **Acceptance test:**
