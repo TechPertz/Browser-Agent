@@ -56,7 +56,7 @@ def build_graph(deps: AgentDeps):
     g.add_conditional_edges(
         "verify",
         route_after_verify,
-        {"act": "act", "extract": "extract", "failed": END},
+        {"act": "act", "extract": "extract", "plan": "plan", "failed": END},
     )
     g.add_conditional_edges(
         "extract",

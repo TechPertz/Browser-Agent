@@ -23,9 +23,13 @@ from andera.tools.browser import (
 )
 
 from . import prompts
-from .state import AgentState
+from .plan_cache import PlanCache, plan_key
+from .state import AgentState, compact_observations
 
 REFLECT_MAX = 3
+# If the verifier disagrees this many times in a row, bail to re-plan
+# rather than chewing up reflection attempts on a dead plan.
+REPLAN_AFTER_CONSECUTIVE_FAILS = 2
 
 
 @dataclass
@@ -36,6 +40,7 @@ class AgentDeps:
     extractor: ChatModel
     judge: ChatModel
     browser: BrowserTools
+    plan_cache: PlanCache | None = None
 
 
 def _parse_json(text: str) -> Any:
@@ -54,13 +59,31 @@ def _parse_json(text: str) -> Any:
 
 def make_plan_node(deps: AgentDeps):
     async def plan(state: AgentState) -> dict:
+        task_prompt = state.get("task_prompt", "")
+        schema = state.get("extract_schema") or {}
+        start_url = state.get("start_url")
+
+        # Check cache — identical task+schema+url_pattern -> reuse plan.
+        cache_key = plan_key(task_prompt, schema, start_url)
+        if deps.plan_cache is not None:
+            cached = deps.plan_cache.get(cache_key)
+            if cached is not None:
+                return {
+                    "plan": cached,
+                    "step_index": 0,
+                    "status": "acting",
+                    "reflect_count": 0,
+                    "consecutive_fails": 0,
+                    "plan_cache_hit": True,
+                }
+
         messages = [
             {"role": "system", "content": prompts.PLANNER_SYSTEM},
             {"role": "user", "content": prompts.planner_user(
-                task_prompt=state.get("task_prompt", ""),
+                task_prompt=task_prompt,
                 input_data=state.get("input_data", {}),
-                start_url=state.get("start_url"),
-                schema=state.get("extract_schema", {}),
+                start_url=start_url,
+                schema=schema,
             )},
         ]
         out = await deps.planner.complete(messages=messages)
@@ -70,7 +93,22 @@ def make_plan_node(deps: AgentDeps):
                 raise ValueError("planner did not return a list")
         except Exception as e:
             return {"status": "failed", "error": f"plan parse: {e}"}
-        return {"plan": plan, "step_index": 0, "status": "acting", "reflect_count": 0}
+
+        # Warm the cache for future samples of this task.
+        if deps.plan_cache is not None:
+            try:
+                deps.plan_cache.put(cache_key, plan)
+            except Exception:
+                pass
+
+        return {
+            "plan": plan,
+            "step_index": 0,
+            "status": "acting",
+            "reflect_count": 0,
+            "consecutive_fails": 0,
+            "plan_cache_hit": False,
+        }
 
     return plan
 
@@ -115,20 +153,31 @@ def make_act_node(deps: AgentDeps):
             if art:
                 update["evidence"] = [art]
         if action == "extract" and r.status == "ok":
-            update["observations"] = [{"kind": "extract", "data": r.data}]
+            # observations is non-reducer now; append + compact explicitly.
+            current = state.get("observations") or []
+            projected = current + [{"kind": "extract", "data": r.data}]
+            update["observations"] = compact_observations(projected)
         return update
 
     return act
 
 
 def make_observe_node(deps: AgentDeps):
-    """Take a fresh DOM snapshot so the verifier can judge the last action."""
+    """Take a fresh DOM snapshot so the verifier can judge the last action.
+
+    Also compacts the observation history when it exceeds the window,
+    so long flows (20+ steps) don't overflow LLM context on subsequent
+    verifier / extractor calls. `observations` is a plain (non-reducer)
+    list so we can replace it with a compacted version here.
+    """
 
     async def observe(state: AgentState) -> dict:
         snap = await deps.browser.snapshot()
         if snap.status == "error":
             return {"status": "failed", "error": snap.error}
-        return {"observations": [{"kind": "snapshot", "data": snap.data}]}
+        new_entry = {"kind": "snapshot", "data": snap.data}
+        projected = (state.get("observations") or []) + [new_entry]
+        return {"observations": compact_observations(projected)}
 
     return observe
 
@@ -155,12 +204,32 @@ def make_verify_node(deps: AgentDeps):
             ok = True
         idx = state.get("step_index", 0)
         if ok:
-            return {"step_index": idx + 1, "status": "acting"}
-        # failed step: either reflect or give up
+            return {
+                "step_index": idx + 1,
+                "status": "acting",
+                "consecutive_fails": 0,
+            }
+        # Failed step: decide among reflect, replan, or fail.
         rc = state.get("reflect_count", 0)
+        cf = state.get("consecutive_fails", 0) + 1
+
         if rc + 1 >= REFLECT_MAX:
             return {"status": "failed", "error": "reflection cap reached"}
-        return {"reflect_count": rc + 1, "status": "acting"}
+
+        # Plan-level failure: if the same step has failed repeatedly,
+        # the plan itself is probably wrong. Escalate to re-planning.
+        if cf >= REPLAN_AFTER_CONSECUTIVE_FAILS:
+            return {
+                "status": "replanning",
+                "reflect_count": rc + 1,
+                "consecutive_fails": 0,
+            }
+
+        return {
+            "reflect_count": rc + 1,
+            "consecutive_fails": cf,
+            "status": "acting",
+        }
 
     return verify
 
@@ -230,6 +299,8 @@ def route_after_verify(state: AgentState) -> str:
     s = state.get("status")
     if s == "failed":
         return "failed"
+    if s == "replanning":
+        return "plan"
     plan = state.get("plan") or []
     if state.get("step_index", 0) >= len(plan):
         return "extract"

@@ -23,12 +23,16 @@ class LiteLLMChatModel:
         *,
         api_key: str | None = None,
         default_temperature: float = 0.2,
+        num_retries: int = 3,
+        request_timeout: float = 60.0,
     ) -> None:
         self.provider = provider
         self.model = model
         self._model_string = f"{provider}/{model}" if "/" not in model else model
         self._api_key = api_key
         self._default_temperature = default_temperature
+        self._num_retries = num_retries
+        self._request_timeout = request_timeout
 
     async def complete(
         self,
@@ -46,6 +50,10 @@ class LiteLLMChatModel:
             "model": self._model_string,
             "messages": messages,
             "temperature": kwargs.pop("temperature", self._default_temperature),
+            # LiteLLM handles retry+backoff natively; these cover 429 and
+            # transient timeout failures without cluttering the node code.
+            "num_retries": self._num_retries,
+            "timeout": self._request_timeout,
         }
         if self._api_key is not None:
             params["api_key"] = self._api_key
