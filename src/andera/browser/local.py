@@ -100,11 +100,48 @@ class LocalPlaywrightSession:
         await self._page.goto(url, wait_until="domcontentloaded")
 
     async def click(self, selector_or_text: str) -> None:
-        """Prefer CSS/XPath; fall back to text match via get_by_text."""
-        try:
-            await self._page.click(selector_or_text, timeout=5000)
-        except Exception:
-            await self._page.get_by_text(selector_or_text, exact=False).first.click()
+        """Prefer real selectors; fall back carefully to text match.
+
+        Accuracy rule: a failed selector must not degrade into "click
+        anything that contains this substring." That's how agents end
+        up clicking 'Submit feedback' in the footer when the planner
+        asked for the form's submit button.
+
+        Strategy:
+          1. If the input looks like a selector (CSS/XPath), use it
+             strictly. Raise on failure rather than retrying as text.
+          2. Otherwise, try get_by_role('button'/'link'/'menuitem'/'tab',
+             name=text, exact=True).
+          3. Fall back to get_by_text(text, exact=True) — but ONLY if
+             it matches exactly ONE element. Ambiguous text never
+             clicks; let the agent reflect and pick a different step.
+        """
+        s = selector_or_text.strip()
+        looks_like_selector = (
+            s.startswith(("#", ".", "/", "[", ":"))
+            or ">" in s or "[" in s or "//" in s
+        )
+        if looks_like_selector:
+            await self._page.click(s, timeout=5000)
+            return
+
+        for role in ("button", "link", "menuitem", "tab"):
+            loc = self._page.get_by_role(role, name=s, exact=True)
+            if await loc.count() == 1:
+                await loc.click(timeout=5000)
+                return
+
+        loc = self._page.get_by_text(s, exact=True)
+        n = await loc.count()
+        if n == 1:
+            await loc.click(timeout=5000)
+            return
+        if n == 0:
+            raise ValueError(f"click target not found: {s!r}")
+        raise ValueError(
+            f"click target ambiguous: {n} elements match {s!r} exactly; "
+            "planner must emit a more specific target"
+        )
 
     async def type(self, selector: str, value: str) -> None:
         await self._page.fill(selector, value)
