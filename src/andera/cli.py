@@ -96,6 +96,51 @@ def check() -> None:
     typer.echo(f"browser ok: {snap.get('title')!r} @ {snap.get('url')}")
 
 
+@app.command()
+def login(
+    host: str = typer.Argument(..., help="Short name for the host (e.g. github, linear)."),
+    url: str = typer.Option(..., "--url", "-u", help="Login URL to open."),
+) -> None:
+    """Open a headed browser, wait for you to sign in, seal the session state."""
+    load_dotenv()
+    from andera.credentials.login_flow import interactive_login
+
+    path = asyncio.run(interactive_login(host=host, login_url=url))
+    typer.echo(f"sealed state saved: {path}")
+
+
+@app.command()
+def verify(
+    run_root: Path = typer.Argument(..., help="Path to the run directory (runs/<run_id>)."),
+) -> None:
+    """Re-hash every artifact + verify RUN_MANIFEST + audit-log chain."""
+    from andera.storage import AuditLog, verify_manifest
+
+    if not run_root.exists():
+        typer.echo(f"run not found: {run_root}", err=True)
+        raise typer.Exit(2)
+
+    report = verify_manifest(run_root)
+    typer.echo(f"manifest: {'OK' if report['ok'] else 'FAIL'}")
+    typer.echo(f"  manifest_hash_ok: {report['manifest_hash_ok']}")
+    typer.echo(f"  artifacts_checked: {report['artifacts_checked']}")
+    if report["bad_artifacts"]:
+        typer.echo(f"  bad_artifacts: {len(report['bad_artifacts'])}")
+
+    # Walk the run_id audit DB if present (data/<run_id>.audit.db)
+    run_id = run_root.name
+    audit_path = Path("data") / f"{run_id}.audit.db"
+    if audit_path.exists():
+        audit = AuditLog(audit_path)
+        chain_ok = audit.verify_chain()
+        typer.echo(f"audit_chain: {'OK' if chain_ok else 'FAIL'}")
+        typer.echo(f"  root_hash: {audit.root_hash(run_id)}")
+    else:
+        typer.echo(f"audit_chain: SKIPPED (no audit db at {audit_path})")
+
+    raise typer.Exit(0 if report["ok"] else 1)
+
+
 def main() -> None:
     app()
 

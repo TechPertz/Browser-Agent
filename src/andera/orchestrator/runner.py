@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import asyncio
 import csv
-import json
 import traceback
 import uuid
 from dataclasses import dataclass, field
@@ -33,7 +32,7 @@ from andera.agent.plan_cache import PlanCache
 from andera.browser import BrowserPool
 from andera.config import Profile
 from andera.models import Role, get_model
-from andera.storage import FilesystemArtifactStore
+from andera.storage import AuditLog, FilesystemArtifactStore, write_manifest
 from andera.tools.browser import BrowserTools
 
 from .inputs import load_inputs
@@ -100,6 +99,7 @@ class RunWorkflow:
         # Import late so tests can substitute via monkeypatch.
         from andera.queue import SqliteQueue
         self.queue = SqliteQueue(Path("data") / f"{self.run_id}.queue.db")
+        self.audit = AuditLog(Path("data") / f"{self.run_id}.audit.db")
 
         self._results: list[dict[str, Any]] = []
         self._results_lock = asyncio.Lock()
@@ -119,6 +119,10 @@ class RunWorkflow:
     async def _run_one(self, job: dict[str, Any]) -> dict[str, Any]:
         """Execute one sample through the LangGraph. Returns result dict."""
         sample_id = job["sample_id"]
+        self.audit.append(
+            kind="sample.started", run_id=self.run_id, sample_id=sample_id,
+            payload={"row_index": job.get("row_index")},
+        )
         async with self.pool.acquire(sample_id=sample_id, run_id=self.run_id) as session:
             deps = _build_deps(self.profile, BrowserTools(session), self.plan_cache)
             initial = {
@@ -136,7 +140,7 @@ class RunWorkflow:
                 checkpoint_db=Path("data") / f"{self.run_id}.ckpt.db",
                 thread_id=sample_id,
             )
-        return {
+        result = {
             "sample_id": sample_id,
             "row_index": job.get("row_index"),
             "verdict": final.get("verdict"),
@@ -146,6 +150,12 @@ class RunWorkflow:
             "status": final.get("status"),
             "error": final.get("error"),
         }
+        self.audit.append(
+            kind="sample.completed" if result["verdict"] == "pass" else "sample.failed",
+            run_id=self.run_id, sample_id=sample_id,
+            payload={"verdict": result["verdict"], "row_index": result["row_index"]},
+        )
+        return result
 
     async def _worker(self, worker_id: int) -> None:
         while True:
@@ -169,6 +179,10 @@ class RunWorkflow:
                 await self.queue.nack(item_id, err)
 
     async def execute(self) -> RunResult:
+        self.audit.append(
+            kind="run.started", run_id=self.run_id,
+            payload={"task": self.task.get("task_id"), "total": len(self.rows)},
+        )
         await self._enqueue_all()
 
         n = max(1, self.profile.browser.concurrency)
@@ -184,8 +198,32 @@ class RunWorkflow:
 
         csv_path = self.run_root / "output.csv"
         self._write_aggregate_csv(csv_path)
-        manifest_path = self.run_root / "RUN_MANIFEST.json"
-        self._write_manifest(manifest_path, passed, failed)
+
+        self.audit.append(
+            kind="run.completed", run_id=self.run_id,
+            payload={"passed": passed, "failed": failed},
+        )
+        audit_root = self.audit.root_hash(run_id=self.run_id)
+        manifest_path = write_manifest(
+            run_root=self.run_root,
+            run_id=self.run_id,
+            task=self.task,
+            samples=[{
+                "sample_id": r["sample_id"],
+                "row_index": r["row_index"],
+                "verdict": r.get("verdict"),
+                "verdict_reason": r.get("verdict_reason"),
+                "status": r.get("status"),
+                "evidence_count": r.get("evidence_count"),
+                "error": r.get("error"),
+            } for r in self._results],
+            audit_root_hash=audit_root,
+            profile_excerpt={
+                "planner": self.profile.models.planner.model,
+                "browser_backend": self.profile.browser.backend,
+                "concurrency": self.profile.browser.concurrency,
+            },
+        )
 
         return RunResult(
             run_id=self.run_id,
@@ -222,27 +260,6 @@ class RunWorkflow:
                     *[extracted.get(k, "") for k in keys],
                 ])
 
-    def _write_manifest(self, path: Path, passed: int, failed: int) -> None:
-        manifest = {
-            "run_id": self.run_id,
-            "task": self.task.get("task_id") or self.task.get("task_name"),
-            "total": len(self._results),
-            "passed": passed,
-            "failed": failed,
-            "samples": [
-                {
-                    "sample_id": r["sample_id"],
-                    "row_index": r["row_index"],
-                    "verdict": r.get("verdict"),
-                    "verdict_reason": r.get("verdict_reason"),
-                    "status": r.get("status"),
-                    "evidence_count": r.get("evidence_count"),
-                    "error": r.get("error"),
-                }
-                for r in self._results
-            ],
-        }
-        path.write_text(json.dumps(manifest, indent=2, default=str))
 
 
 async def run(
