@@ -502,6 +502,20 @@ docker compose -f docker/docker-compose.yml up -d
 
 ---
 
+## Remaining-phase execution order
+
+Rubric-driven, not plan-order-driven:
+
+| # | Phase | Why this order |
+|---|---|---|
+| 1 | **Phase 8 — Mock Workday** | Without it, task #5 can't run → eval harness can't score it. |
+| 2 | **Phase 9 — Eval harness** | The rubric proof-point. Must run all 5 tasks and produce a score. |
+| 3 | **Phase 7 — Langfuse / tracing** | Demo-day credibility. Shows cost + latency per run. |
+| 4 | **Phase 6 — NL planner** | Product polish. Only if time remains. |
+| 5 | **Phase 10 — Demo prep** | README + one-command demo script. |
+
+---
+
 ## Phase 8 — Mock Workday + fast-path integrations (~1.5h)
 
 **Goal:** Tasks 1 and 5 can run fully locally; GitHub/Linear integration mode works.
