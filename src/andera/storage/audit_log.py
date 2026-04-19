@@ -41,11 +41,21 @@ class AuditLog:
     Safe under concurrent writers: each append runs in an IMMEDIATE
     transaction so the prev_hash we read matches the this_hash we write
     (no lost-update race).
+
+    Optional `on_append` callback fires after each successful write with
+    the full row dict. Used by the API layer to forward events to
+    WebSocket subscribers.
     """
 
-    def __init__(self, db_path: str | Path) -> None:
+    def __init__(
+        self,
+        db_path: str | Path,
+        *,
+        on_append: Any = None,
+    ) -> None:
         self._db_path = Path(db_path)
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._on_append = on_append
         self._ensure()
 
     def _conn(self) -> sqlite3.Connection:
@@ -99,6 +109,19 @@ class AuditLog:
                 (event_id, kind, run_id, sample_id, ts, _canonical(payload), prev, this_hash),
             )
             c.execute("COMMIT")
+        if self._on_append is not None:
+            try:
+                self._on_append({
+                    "event_id": event_id,
+                    "kind": kind,
+                    "run_id": run_id,
+                    "sample_id": sample_id,
+                    "timestamp": ts,
+                    "payload": payload,
+                    "this_hash": this_hash,
+                })
+            except Exception:
+                pass  # never let a subscriber crash a write
         return this_hash
 
     def root_hash(self, run_id: str | None = None) -> str:
