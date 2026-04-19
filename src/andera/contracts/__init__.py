@@ -3,6 +3,7 @@ from .events import Event, EventKind
 from .protocols import ArtifactStore, BrowserSession, ChatModel, TaskQueue
 from .runspec import RunSpec
 from .sample import Sample, SampleStatus
+from .tools import ToolCall, ToolResult
 
 __all__ = [
     "Artifact",
@@ -15,4 +16,6 @@ __all__ = [
     "Sample",
     "SampleStatus",
     "TaskQueue",
+    "ToolCall",
+    "ToolResult",
 ]
