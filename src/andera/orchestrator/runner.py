@@ -414,6 +414,26 @@ class RunWorkflow:
                 ])
 
 
+def _apply_task_overrides(profile: Profile, task: dict[str, Any]) -> Profile:
+    """Tasks may carry `profile_overrides` that tighten the profile for
+    their specific risk profile (e.g. LinkedIn drops concurrency to 1).
+    We return a shallow-updated copy so other runs aren't affected.
+    """
+    overrides = task.get("profile_overrides") or {}
+    if not overrides:
+        return profile
+    data = profile.model_dump()
+    for top_key, inner in overrides.items():
+        if top_key not in data or not isinstance(inner, dict):
+            continue
+        current = data[top_key]
+        if isinstance(current, dict):
+            current.update(inner)
+        else:
+            data[top_key] = inner
+    return Profile.model_validate(data)
+
+
 async def run(
     *,
     profile: Profile,
@@ -424,6 +444,7 @@ async def run(
 ) -> RunResult:
     """Convenience wrapper: load inputs + run the workflow."""
     rows = load_inputs(input_path)
+    profile = _apply_task_overrides(profile, task)
     wf = RunWorkflow(
         profile=profile,
         task=task,

@@ -1,0 +1,19 @@
+# Task 2 — Linear ticket metadata capture.
+# Public Linear URLs or a sealed-state login on linear.app.
+
+task_id: linear-tickets
+task_name: Linear ticket — capture ticket number, assignee, due date
+task_type: extract
+prompt: |
+  Navigate to each Linear issue URL in the input, capture a full-page
+  screenshot of the ticket view, and extract the ticket number,
+  assignee display name, and due date (or null if unset).
+
+extract_schema:
+  title: "Linear ticket metadata"
+  type: object
+  required: [ticket_no, assignee]
+  properties:
+    ticket_no: { type: string }
+    assignee:  { type: [string, "null"] }
+    due_date:  { type: [string, "null"] }

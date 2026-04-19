@@ -1,0 +1,28 @@
+# Task 1 — user enrichment across GitHub + Workday.
+# Takes a CSV of user handles, looks each up on GitHub (public) AND on
+# Workday (mock service running locally for the trial), joins the two
+# views into one row.
+
+task_id: github-workday-join
+task_name: Enrich each user — GitHub profile + Workday record
+task_type: list_iter
+prompt: |
+  For each user in the input, do two things:
+    1) Open https://github.com/{handle} and capture the user's name and
+       public email (if shown).
+    2) Open the Workday directory at the base URL in profile.yaml,
+       search for the same handle, open their record, and capture their
+       title and department.
+  Screenshot before and after every click that changes the page, and
+  extract the joined fields.
+
+extract_schema:
+  title: "Joined user record"
+  type: object
+  required: [handle, gh_name, wd_title, wd_department]
+  properties:
+    handle:        { type: string }
+    gh_name:       { type: [string, "null"] }
+    gh_email:      { type: [string, "null"] }
+    wd_title:      { type: [string, "null"] }
+    wd_department: { type: [string, "null"] }

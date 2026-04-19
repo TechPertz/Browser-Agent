@@ -1,0 +1,23 @@
+# Task 5 — Workday form fill + submit + capture attachments.
+# Runs against the local mock Workday service (Phase 8). Base URL is
+# read from profile.integrations.workday.base_url.
+
+task_id: workday-form-download
+task_name: Workday — fill request form, submit, capture confirmation
+task_type: form_fill
+prompt: |
+  For each row in the input, open the Workday forms portal, start a new
+  request, fill the fields listed in input_data (keys match field
+  labels), and submit. Screenshot the empty form, the filled form, and
+  the confirmation page. Capture any downloadable attachment link on
+  the confirmation page.
+
+extract_schema:
+  title: "Workday form submission record"
+  type: object
+  required: [employee_id, request_type, confirmation_id]
+  properties:
+    employee_id:     { type: string }
+    request_type:    { type: string }
+    confirmation_id: { type: [string, "null"] }
+    attachment_url:  { type: [string, "null"] }

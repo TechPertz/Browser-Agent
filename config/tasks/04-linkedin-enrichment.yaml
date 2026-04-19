@@ -1,0 +1,37 @@
+# Task 4 — LinkedIn enrichment.
+# Highest bot-detection risk of the 5 spec tasks. Run serially, stealth
+# on, per-host rate limiter very conservative, Google fallback hint.
+
+task_id: linkedin-enrichment
+task_name: LinkedIn profile enrichment — current title + company
+task_type: extract
+prompt: |
+  For each person row (first_name + last_name + company), find the
+  LinkedIn profile. Prefer `linkedin.com/in/{slug}` if the slug is
+  known; otherwise open Google and click the first LinkedIn result.
+  Screenshot the profile. Extract the current job title and company,
+  and the location line if visible.
+
+  If LinkedIn shows a sign-in wall or challenge, fall back to Google's
+  cached snippet and extract from there instead; screenshot whatever
+  page yields the answer as evidence.
+
+extract_schema:
+  title: "LinkedIn enriched record"
+  type: object
+  required: [name, current_title, current_company]
+  properties:
+    name:             { type: string }
+    current_title:    { type: [string, "null"] }
+    current_company:  { type: [string, "null"] }
+    location:         { type: [string, "null"] }
+    source:           { type: string, enum: [linkedin, google_cache, unknown] }
+
+# Profile overrides applied by the orchestrator for this task: serial
+# execution (concurrency=1) + aggressive stealth + low per-host rps.
+profile_overrides:
+  browser:
+    concurrency: 1
+    stealth: true
+    per_host_rps: 0.5
+    per_host_burst: 1

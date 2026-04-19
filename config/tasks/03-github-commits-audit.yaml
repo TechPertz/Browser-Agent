@@ -1,0 +1,29 @@
+# Task 3 — nested navigation, audit evidence per commit.
+# Input: CSV of commit URLs (github.com/org/repo/commit/<sha>).
+# For each: open commit -> capture -> open Checks tab -> capture ->
+# open each failed check -> capture -> follow any Jira links in commit
+# message -> capture Jira issue.
+
+task_id: github-commits-audit
+task_name: GitHub commit audit — commit, checks, CI drill-in, Jira link
+task_type: navigate
+prompt: |
+  For each commit URL:
+    1. Navigate to the commit page; screenshot.
+    2. Click into the Checks tab; screenshot the check list.
+    3. For any failing check, click into it; screenshot the CI log.
+    4. If the commit message mentions a Jira issue key (e.g. ENG-123),
+       follow the implied link to the Jira issue and screenshot that.
+  Extract: commit sha, PR number (if linked), checks passed count,
+  checks failed count, linked Jira issue (or null).
+
+extract_schema:
+  title: "Commit audit record"
+  type: object
+  required: [sha, checks_passed, checks_failed]
+  properties:
+    sha:            { type: string }
+    pr_number:      { type: [integer, "null"] }
+    checks_passed:  { type: integer, minimum: 0 }
+    checks_failed:  { type: integer, minimum: 0 }
+    linked_jira:    { type: [string, "null"] }
