@@ -209,6 +209,95 @@ uv run python scripts/run_one_sample.py \
 
 ---
 
+## Phase 2.5 — Grounding + scalability hardening (~4h)
+
+**Goal:** generic agent that works on unseen systems (Workday, LinkedIn, NetSuite) without task-specific tuning, AND scales to thousands of samples without cost/latency blowup.
+
+Driven by `/plan-eng-review` findings on the original Phase 2.5 proposal — three scalability gaps were missed (plan cache, state compaction, rate limits) and two generality gaps needed sharpening (shadow-DOM/iframe aware SoM, re-callable plan).
+
+**Deliverables:**
+
+1. **Rich snapshot** — `browser/grounding.py::build_snapshot(page)` returns:
+   - `url`, `title`, `inner_text` (truncated to 6KB, body-only)
+   - `a11y` — accessibility tree via `page.accessibility.snapshot()`
+   - `interactive` — list of `{role, name, bbox, mark_id}` for visible clickables, buttons, links, inputs, selects
+
+2. **Set-of-Mark overlay** — `browser/set_of_mark.py`:
+   - JS-injected script walks DOM + `shadowRoot` + same-origin iframes
+   - Draws numbered colored boxes over interactive elements
+   - Returns `(annotated_screenshot_bytes, marks: dict[int, Mark])`
+   - Adds `BrowserSession.mark_and_screenshot()` + `click_mark(id)` methods
+   - Extract semantic info (role + accessible name) per mark for the navigator
+   - Cross-origin iframes logged as `unreachable` (coordinate-only fallback)
+
+3. **Plan cache** — `agent/plan_cache.py`:
+   - Key = `sha256(task_prompt + json(schema) + normalized_url_pattern)`
+   - Storage: `data/plan_cache/{key}.json`
+   - Hit: skip planner LLM call, reuse plan as template
+   - Miss: run planner, write result
+   - Cuts 1000-sample runs from 1000 planner calls → 1
+
+4. **State compaction** — `agent/state.py::compact_observations`:
+   - Cap `observations` at last N=5 full entries
+   - Older entries summarized by Haiku into single-line abstracts
+   - Prevents context-window overflow on long flows (20+ step tasks)
+
+5. **Re-callable plan node** — `agent/graph.py`:
+   - Planner becomes first-class re-entrant: verifier can route to `plan` when >= 2 consecutive verify failures on same step
+   - Planner sees prior plan + failure context; can revise tail of plan
+
+6. **LiteLLM retry + backoff** — `models/adapters/litellm_adapter.py`:
+   - Wire `num_retries=3`, `request_timeout=60s`, exponential backoff
+   - Gracefully handle 429s at concurrency=20+
+
+**Acceptance test:**
+```bash
+uv run pytest tests/unit/browser/test_grounding.py -q      # rich snapshot
+uv run pytest tests/unit/browser/test_set_of_mark.py -q    # SoM incl. shadow-DOM
+uv run pytest tests/unit/agent/test_plan_cache.py -q       # cache hit/miss
+uv run pytest tests/unit/agent/test_state_compaction.py -q # observation cap
+uv run python scripts/smoke_mark.py                        # real page with marks
+```
+
+---
+
+## Phase 2.75 — Specialist subagents (~3h)
+
+**Goal:** literal "many subagents" per Andera spec. Task-type classifier dispatches to a specialist planner per task shape. Addresses the /plan-eng-review Finding 1C.
+
+**Deliverables:**
+
+1. **Task classifier** — `agent/classify.py::classify_task(task_prompt, schema) -> TaskType`
+   - Uses Haiku (cheap): returns one of `extract | form_fill | list_iter | navigate | unknown`
+   - Result cached per `(task_prompt_hash, schema_hash)` so 1000 samples classify once
+
+2. **Specialist planners** — `agent/specialists/`
+   - `extract_planner.py` — for simple 1-page extractions (GitHub issue, public blog)
+   - `form_fill_planner.py` — for flows that fill a form + submit + download (Workday apply)
+   - `list_iter_planner.py` — for pagination/iteration over a list of items (60 commits, N users)
+   - `generic_planner.py` — fallback when classifier returns `unknown`
+   - Each specialist is a `(ChatModel, system_prompt, plan_template)` triple. Same graph runtime, specialized prompts.
+
+3. **Dispatch wiring** — `agent/graph.py`:
+   - New `classify` node runs once at graph start
+   - `route_after_classify` picks which specialist planner to call
+   - State gains `task_type: TaskType` field
+
+4. **Specialist prompts** — `agent/prompts.py` additions:
+   - `EXTRACT_SPECIALIST_SYSTEM` — focus on navigating to the target page + screenshotting evidence + extraction
+   - `FORM_FILL_SPECIALIST_SYSTEM` — focus on field-by-field fill, verify each entry, submit, capture confirmation
+   - `LIST_ITER_SPECIALIST_SYSTEM` — focus on iterating a list, extracting per item, paginating until done
+
+**Acceptance test:**
+```bash
+uv run pytest tests/unit/agent/test_specialists.py -q
+# - classifier routes "extract title from GitHub issue" -> extract_planner
+# - classifier routes "fill Workday form and submit" -> form_fill_planner
+# - classifier routes "iterate 60 commits and screenshot each" -> list_iter_planner
+```
+
+---
+
 ## Phase 3 — Orchestration + queue (~1.5h)
 
 **Goal:** Phase 2, but at 20–50 samples in parallel with crash recovery.
