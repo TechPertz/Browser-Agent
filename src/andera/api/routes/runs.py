@@ -25,6 +25,41 @@ from ..ws import get_bus
 router = APIRouter()
 
 
+def _schema_from_fields(
+    fields: str | None, multi_item: bool,
+) -> dict[str, Any]:
+    """Synthesize an extract schema from a comma-separated field list.
+
+    - None / empty        -> {} (action-oriented, agent just captures evidence)
+    - "a, b, c"           -> object schema with those three required strings
+    - "a, b" + multi_item -> array schema whose items use the same object shape
+
+    Field names are stripped + deduped while preserving order. Types are
+    all string — richer typing would need a separate UI and is out of
+    scope for this form. The judge + extractor handle null values for
+    fields that aren't visible in evidence.
+    """
+    if not fields or not fields.strip():
+        return {}
+    seen: set[str] = set()
+    names: list[str] = []
+    for raw in fields.split(","):
+        name = raw.strip()
+        if name and name not in seen:
+            seen.add(name)
+            names.append(name)
+    if not names:
+        return {}
+    item_schema = {
+        "type": "object",
+        "properties": {n: {"type": ["string", "null"]} for n in names},
+        "required": names,
+    }
+    if multi_item:
+        return {"type": "array", "items": item_schema}
+    return item_schema
+
+
 class CreateRunRequest(BaseModel):
     """Flexible create-run payload.
 
@@ -45,6 +80,13 @@ class CreateRunRequest(BaseModel):
     repeat: bool = False
     max_samples: int | None = None
     run_id: str | None = None
+    # Optional structured-extraction hint for NLP tasks. Comma-separated
+    # list of field names the agent should pull out (e.g. "author, date,
+    # school"). If unset, the task is action-oriented.
+    extract_fields: str | None = None
+    # If True, extracted output becomes a list (one row per item) instead
+    # of a single object. Enables fan-out tasks like "10 PRs per repo".
+    multi_item: bool = False
 
 
 @router.post("/api/runs")
@@ -60,9 +102,11 @@ async def create_run(req: CreateRunRequest) -> dict[str, Any]:
             "task_id": f"adhoc-{uuid.uuid4().hex[:6]}",
             "task_name": "Ad-hoc task",
             "prompt": req.prompt,
-            # Empty schema -> action-oriented: agent captures evidence
-            # and the judge scores on completeness, not field values.
-            "extract_schema": {},
+            # Schema depends on whether the caller listed fields to
+            # extract. Empty -> action-oriented (screenshot flow).
+            "extract_schema": _schema_from_fields(
+                req.extract_fields, req.multi_item,
+            ),
         }
     else:
         raise HTTPException(400, "either `task_path` or `prompt` is required")

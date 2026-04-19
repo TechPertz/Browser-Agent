@@ -32,6 +32,20 @@
       </div>
     </div>
 
+    <label style="margin-top: 16px;">Extract fields (optional, comma-separated)</label>
+    <input name="extract_fields" placeholder='e.g. author, date, school, current_company' />
+    <div style="color: var(--dim); font-size: 11px; margin-top: 4px;">
+      Leave blank for action-only tasks (just screenshots / flow completion).
+      List field names when you want a structured CSV with those columns.
+    </div>
+
+    <div style="margin-top: 16px; display: flex; align-items: center; gap: 8px;">
+      <input type="checkbox" id="multi_item" name="multi_item" value="true" />
+      <label for="multi_item" style="margin: 0;">
+        Multiple items per row — fan out (e.g. 10 PRs per repo)
+      </label>
+    </div>
+
     <label style="margin-top: 16px;">Max samples (optional)</label>
     <input name="max_samples" type="number" min="1" placeholder="leave blank for all rows" />
 

@@ -67,9 +67,11 @@ def test_runs_fragment_shows_completed_run(client, tmp_path):
 def test_new_run_page(client):
     r = client.get("/ui/runs/new")
     assert r.status_code == 200
-    # New form: NLP textarea + repeat checkbox + optional file upload.
+    # NLP textarea + repeat + upload + extract_fields + multi_item.
     assert 'name="prompt"' in r.text
     assert 'name="repeat"' in r.text
+    assert 'name="extract_fields"' in r.text
+    assert 'name="multi_item"' in r.text
     assert 'type="file"' in r.text
     assert 'multipart/form-data' in r.text
 

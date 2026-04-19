@@ -60,6 +60,8 @@ async def create_run_from_form(
     prompt: str = Form(...),
     repeat: str = Form(""),
     max_samples: str = Form(""),
+    extract_fields: str = Form(""),
+    multi_item: str = Form(""),
     input_file: UploadFile | None = File(None),
 ) -> Any:
     """Accept the NLP-first form: natural-language task + optional upload.
@@ -72,7 +74,9 @@ async def create_run_from_form(
     from .runs import CreateRunRequest, create_run
 
     repeat_flag = repeat.strip().lower() in ("true", "on", "1", "yes")
+    multi_item_flag = multi_item.strip().lower() in ("true", "on", "1", "yes")
     max_n = int(max_samples) if max_samples.strip() else None
+    fields_str = extract_fields.strip() or None
 
     # Pre-allocate a run_id so we can place the uploaded file under it.
     run_id = f"run-{uuid.uuid4().hex[:8]}"
@@ -106,6 +110,8 @@ async def create_run_from_form(
             repeat=repeat_flag,
             max_samples=max_n,
             run_id=run_id,
+            extract_fields=fields_str,
+            multi_item=multi_item_flag,
         ))
     except HTTPException as e:
         return templates.TemplateResponse(
