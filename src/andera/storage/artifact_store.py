@@ -78,6 +78,23 @@ class FilesystemArtifactStore:
             human_dir = self.root / safe_sub
             human_dir.mkdir(parents=True, exist_ok=True)
             human_path = human_dir / safe_name
+            # Collision handling: if a file with this name already exists,
+            # it may be the same content (hardlinks share an inode — skip)
+            # OR different content (planner reused a target across scrolls
+            # — disambiguate with a short sha so we don't silently lose the
+            # second screenshot in the human-readable folder).
+            if human_path.exists():
+                try:
+                    same = human_path.stat().st_ino == dest.stat().st_ino
+                except OSError:
+                    same = False
+                if not same:
+                    stem, dot, ext = safe_name.rpartition(".")
+                    if dot:
+                        safe_name = f"{stem}-{sha[:8]}.{ext}"
+                    else:
+                        safe_name = f"{safe_name}-{sha[:8]}"
+                    human_path = human_dir / safe_name
             if not human_path.exists():
                 try:
                     human_path.hardlink_to(dest)
