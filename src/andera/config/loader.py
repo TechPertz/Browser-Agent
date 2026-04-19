@@ -37,6 +37,10 @@ class BrowserConfig(BaseModel):
     # is only useful when a dashboard is watching.
     screencast: bool = False
     screencast_fps: int = Field(default=10, ge=1, le=30)
+    # Per-host politeness. Token bucket at `per_host_rps` with `per_host_burst`
+    # capacity. Applied to every `goto` inside a browser session.
+    per_host_rps: float = Field(default=2.0, gt=0.0)
+    per_host_burst: int = Field(default=4, ge=1)
 
 
 class QueueConfig(BaseModel):

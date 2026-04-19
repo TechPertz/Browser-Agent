@@ -51,11 +51,18 @@ class RunResult:
 
 
 def _pool_for(profile: Profile, store: FilesystemArtifactStore) -> BrowserPool:
+    from andera.browser.rate_limiter import HostRateLimiter
+    limiter = HostRateLimiter(
+        rps=profile.browser.per_host_rps,
+        burst=profile.browser.per_host_burst,
+    )
     return BrowserPool(
         artifacts=store,
         concurrency=profile.browser.concurrency,
         headless=profile.browser.headless,
         viewport=profile.browser.viewport.model_dump(),
+        stealth=profile.browser.stealth,
+        rate_limiter=limiter,
     )
 
 

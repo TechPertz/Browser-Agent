@@ -59,17 +59,27 @@ class LocalPlaywrightSession:
         sample_id: str | None = None,
         run_id: str | None = None,
         storage_state: str | dict[str, Any] | None = None,
+        stealth: bool = False,
+        rate_limiter: Any = None,
     ) -> "LocalPlaywrightSession":
+        from .stealth import apply_stealth, random_user_agent, random_viewport
+
         pw = await async_playwright().start()
         browser = await pw.chromium.launch(headless=headless)
         ctx_kwargs: dict[str, Any] = {}
-        if viewport is not None:
+        if stealth:
+            # Randomize UA + viewport per sample so fingerprints vary.
+            ctx_kwargs["user_agent"] = random_user_agent()
+            ctx_kwargs["viewport"] = random_viewport()
+        elif viewport is not None:
             ctx_kwargs["viewport"] = viewport
         if storage_state is not None:
             ctx_kwargs["storage_state"] = storage_state
         context = await browser.new_context(**ctx_kwargs)
+        if stealth:
+            await apply_stealth(context)
         page = await context.new_page()
-        return cls(
+        inst = cls(
             artifacts=artifacts,
             browser=browser,
             context=context,
@@ -78,10 +88,15 @@ class LocalPlaywrightSession:
             sample_id=sample_id,
             run_id=run_id,
         )
+        inst._rate_limiter = rate_limiter  # type: ignore[attr-defined]
+        return inst
 
     # --- BrowserSession Protocol ---
 
     async def goto(self, url: str) -> None:
+        limiter = getattr(self, "_rate_limiter", None)
+        if limiter is not None:
+            await limiter.acquire(url)
         await self._page.goto(url, wait_until="domcontentloaded")
 
     async def click(self, selector_or_text: str) -> None:

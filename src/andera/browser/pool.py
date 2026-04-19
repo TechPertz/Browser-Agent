@@ -25,12 +25,16 @@ class BrowserPool:
         concurrency: int,
         headless: bool = True,
         viewport: dict[str, int] | None = None,
+        stealth: bool = False,
+        rate_limiter: Any = None,
     ) -> None:
         if concurrency < 1:
             raise ValueError("concurrency must be >= 1")
         self._artifacts = artifacts
         self._headless = headless
         self._viewport = viewport
+        self._stealth = stealth
+        self._rate_limiter = rate_limiter
         self._sem = asyncio.Semaphore(concurrency)
         self._concurrency = concurrency
 
@@ -57,6 +61,8 @@ class BrowserPool:
                 sample_id=sample_id,
                 run_id=run_id,
                 storage_state=storage_state,
+                stealth=self._stealth,
+                rate_limiter=self._rate_limiter,
             )
             yield session
         finally:
