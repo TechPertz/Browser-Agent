@@ -51,6 +51,19 @@ class ScrollToArgs(BaseModel):
     target: str
 
 
+class VisitEachLinkArgs(BaseModel):
+    """Iterate over matching links on the current page, visit + screenshot
+    each. Useful for "top N items in a listing" flows — the planner emits
+    ONE step, deterministic code handles the loop."""
+    # substring that must appear in href (e.g. "/pull/", "/issues/", "/p/")
+    url_pattern: str
+    limit: int = 10
+    # Python format string; `{i}` or `{i:02d}` substituted per iteration.
+    # May include a slash to place shots in a subfolder.
+    name_template: str = "item_{i:02d}"
+    folder: str | None = None
+
+
 class ExtractArgs(BaseModel):
     json_schema: dict[str, Any]
 
@@ -107,6 +120,17 @@ class BrowserTools:
             return await self._session.scroll_to(args.target)
 
         return await invoke("browser.scroll_to", args.model_dump(), run)
+
+    async def visit_each_link(self, args: VisitEachLinkArgs) -> ToolResult:
+        async def run():
+            return await self._session.visit_each_link(
+                url_pattern=args.url_pattern,
+                limit=args.limit,
+                name_template=args.name_template,
+                folder=args.folder,
+            )
+
+        return await invoke("browser.visit_each_link", args.model_dump(), run)
 
     async def screenshot_all(self, args: ScreenshotArgs) -> ToolResult:
         """Walk the page top→bottom and capture viewport chunks. The

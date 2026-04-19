@@ -41,6 +41,16 @@ async def build_snapshot(page: Page) -> dict[str, Any]:
     except Exception:
         interactive = []
 
+    # Dates + times: GitHub, Mastodon, Stack Overflow, many modern sites
+    # render timestamps via <time datetime="..."> or <relative-time
+    # datetime="..."> web components. inner_text often picks up only the
+    # shadow-rendered label ("2 days ago") or nothing at all. Surface the
+    # datetime attribute explicitly so extractors don't miss dates.
+    try:
+        times = await _collect_times(page)
+    except Exception:
+        times = []
+
     # Page-state extras the verifier + planner benefit from knowing.
     try:
         page_state = await _collect_page_state(page)
@@ -54,8 +64,33 @@ async def build_snapshot(page: Page) -> dict[str, Any]:
         "inner_text_truncated": len(inner_text) >= INNER_TEXT_LIMIT,
         "outline": outline,          # flat headings + landmarks
         "interactive": interactive,  # clickables with role/name/bbox + in_viewport
+        "times": times,              # <time>/<relative-time> datetime attrs + visible label
         "page_state": page_state,    # scroll + active element + modal_open + ready_state
     }
+
+
+async def _collect_times(page: Page) -> list[dict[str, Any]]:
+    """Pull every `datetime` attribute off <time> and <relative-time>
+    elements, paired with whatever visible label is near it.
+    """
+    script = """
+    () => {
+      const out = [];
+      const seen = new Set();
+      for (const el of document.querySelectorAll('time, relative-time, [datetime]')) {
+        const dt = el.getAttribute('datetime') || el.getAttribute('title') || '';
+        if (!dt || seen.has(dt + '|' + el.textContent)) continue;
+        seen.add(dt + '|' + el.textContent);
+        out.push({
+          datetime: dt,
+          label: (el.innerText || el.textContent || '').trim().slice(0, 80),
+        });
+        if (out.length >= 30) break;
+      }
+      return out;
+    }
+    """
+    return await page.evaluate(script)
 
 
 async def _collect_page_state(page: Page) -> dict[str, Any]:

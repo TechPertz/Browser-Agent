@@ -24,11 +24,26 @@ Each step MUST be one of:
   - {"action": "type", "target": "<css selector>", "value": "<text>"}
   - {"action": "scroll", "target": "down"|"up"|"top"|"bottom"|"<px>"}
   - {"action": "scroll_to", "target": "<visible text OR css selector>"}
-  - {"action": "screenshot", "target": "<short_name>", "mode": "viewport", "folder": "<optional-slug>"}
-  - {"action": "screenshot", "target": "<short_name>", "mode": "full",     "folder": "<optional-slug>"}
-  - {"action": "screenshot_all", "target": "<short_name>", "folder": "<optional-slug>"}
+  - {"action": "screenshot", "target": "<name>", "mode": "viewport"}
+  - {"action": "screenshot", "target": "<name>", "mode": "full"}
+  - {"action": "screenshot_all", "target": "<name>"}
+      # `name` may contain a forward slash to place the shot in a subfolder:
+      # "some-slug/some-file" → runs/<run_id>/some-slug/some-file.png
+  - {"action": "visit_each_link", "url_pattern": "<href_substring>", "limit": N, "name": "<slug>/<prefix>_{i:02d}"}
+      # Iterates up to N distinct same-origin links whose href contains the
+      # substring, visits each, screenshots it, captures a snapshot, returns
+      # to the original page. ONE plan step replaces N manual click+screenshot
+      # cycles. `{i}` / `{i:02d}` in name get substituted with the index.
   - {"action": "extract", "target": "fields"}   # extracts per extract_schema
   - {"action": "done", "target": "ok"}
+
+Iteration pattern (important):
+  - `click` requires an EXACT selector or EXACT visible text. Descriptions
+    like "first PR in list" will not resolve.
+  - When a task says "visit / screenshot / extract for each of N items in a
+    list", use `visit_each_link`. ONE plan step; code handles the loop. Do
+    NOT manually unroll click → screenshot → back ×N — it wastes plan budget
+    and the click step cannot identify "the Nth item" by description.
 
 Screenshot guidance (important):
   - DEFAULT to mode="viewport" — it's smaller and faster. Use it for UI state
@@ -42,17 +57,12 @@ Screenshot guidance (important):
   - For targeted reveal of a specific element, use scroll_to(text="…") THEN
     a viewport screenshot. This is cheaper than screenshot_all.
 
-Folder guidance (for per-item / per-row tasks):
-  - If the task says "save each item's evidence under a folder named X" or
-    "create a folder per <thing> and save screenshots there", derive a short
-    filesystem-safe slug from the input_data row (e.g. input_data.repo
-    "facebook/react" → folder "facebook-react") and include it on EVERY
-    screenshot step for that sample as "folder": "<slug>".
-  - Do NOT invent folder names from thin air. The slug MUST come from
-    input_data. When input_data is empty, omit the folder field entirely.
-  - Screenshots land in runs/<run_id>/<folder>/<name>.png as hardlinks to
-    the content-addressed blob, so the human-readable layout is a free
-    side-effect; you don't need a separate "mkdir" action.
+Organizing evidence into folders:
+  - When a task asks for per-item folders, put the folder in the screenshot
+    name using a slash ("<slug>/<file>"). The system creates the folder
+    automatically and places the image there. No mkdir action needed.
+  - Derive the slug from input_data (whatever field the task references).
+    Never invent a slug.
 
 Extraction guidance:
   - If the target schema is non-empty, plan your steps to collect the
@@ -133,14 +143,44 @@ before completing the flow. 'uncertain' only if the evidence is suggestive
 but ambiguous."""
 
 
-def planner_user(task_prompt: str, input_data: dict[str, Any],
-                 start_url: str | None, schema: dict[str, Any]) -> str:
-    return (
-        f"Task: {task_prompt}\n\n"
-        f"Input row: {json.dumps(input_data, ensure_ascii=False)}\n"
-        f"Start URL: {start_url or '(none — planner picks)'}\n\n"
-        f"Target schema:\n{json.dumps(schema, ensure_ascii=False, indent=2)}"
-    )
+def planner_user(
+    task_prompt: str,
+    input_data: dict[str, Any],
+    start_url: str | None,
+    schema: dict[str, Any],
+    *,
+    current_snapshot: dict[str, Any] | None = None,
+) -> str:
+    parts = [
+        f"Task: {task_prompt}",
+        f"Input row: {json.dumps(input_data, ensure_ascii=False)}",
+        f"Start URL: {start_url or '(none — planner picks)'}",
+        f"Target schema:\n{json.dumps(schema, ensure_ascii=False, indent=2)}",
+    ]
+    if current_snapshot:
+        # The start_url has already been loaded by a preflight goto.
+        # Show the planner what's actually on the page so it can write
+        # concrete click targets (exact visible text / stable selectors)
+        # instead of describing elements in natural language.
+        trimmed = {
+            "url": current_snapshot.get("url"),
+            "title": current_snapshot.get("title"),
+            "inner_text": (current_snapshot.get("inner_text") or "")[:2000],
+            "interactive": [
+                {
+                    "name": it.get("name"),
+                    "role": it.get("role"),
+                    "selector": it.get("selector"),
+                }
+                for it in (current_snapshot.get("interactive") or [])[:40]
+            ],
+        }
+        parts.append(
+            "Current page (ALREADY LOADED by preflight — your plan should NOT "
+            "re-goto it as the first step; start from whatever comes next):\n"
+            + json.dumps(trimmed, ensure_ascii=False, indent=2)
+        )
+    return "\n\n".join(parts)
 
 
 def navigator_user(remaining: list[dict[str, Any]], snapshot: dict[str, Any]) -> str:
@@ -181,10 +221,18 @@ def _project_observation(obs: dict[str, Any]) -> dict[str, Any]:
             "kind": "snapshot",
             "url": data.get("url"),
             "title": data.get("title"),
-            "inner_text": (data.get("inner_text") or "")[:2000],
+            # Detail pages have header metadata (author, date, status) before
+            # the diff / comments. 4000 chars catches it on most sites; the
+            # outer observation message is capped at 12000 so we stay within
+            # LLM context for multi-page flows.
+            "inner_text": (data.get("inner_text") or "")[:4000],
             "interactive_names": [
                 i.get("name") for i in (data.get("interactive") or [])[:30]
             ],
+            # Explicit date/time values lifted from <time>/<relative-time>
+            # web components — inner_text usually misses these on sites
+            # like GitHub/Stack Overflow where timestamps render via JS.
+            "times": (data.get("times") or [])[:10],
         }
     return {"kind": kind, "data": data}
 

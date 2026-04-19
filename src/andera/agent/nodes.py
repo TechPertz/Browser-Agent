@@ -22,6 +22,7 @@ from andera.tools.browser import (
     ScrollArgs,
     ScrollToArgs,
     TypeArgs,
+    VisitEachLinkArgs,
 )
 
 from . import prompts
@@ -135,6 +136,14 @@ def make_plan_node(deps: AgentDeps):
         # Specialist system prompt driven by classified task type. Falls
         # back to the generic planner prompt when classifier was absent.
         system_prompt = system_prompt_for(task_type)
+        # Feed the planner the most recent snapshot (from preflight goto
+        # OR from a previous act+observe on replan). It needs to see the
+        # actual page to write concrete click targets.
+        observations = state.get("observations") or []
+        latest_snapshot = next(
+            (o.get("data") for o in reversed(observations) if o.get("kind") == "snapshot"),
+            None,
+        )
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompts.planner_user(
@@ -142,6 +151,7 @@ def make_plan_node(deps: AgentDeps):
                 input_data=state.get("input_data", {}),
                 start_url=start_url,
                 schema=schema,
+                current_snapshot=latest_snapshot,
             )},
         ]
         out = await deps.planner.complete(messages=messages)
@@ -191,6 +201,7 @@ def make_act_node(deps: AgentDeps):
             or step.get("selector")
             or step.get("text")
             or step.get("name")
+            or step.get("path")
             or ""
         )
         value = step.get("value", "")
@@ -203,25 +214,44 @@ def make_act_node(deps: AgentDeps):
             r = await deps.browser.type(TypeArgs(selector=target, value=value))
         elif action == "screenshot":
             mode = step.get("mode") or "viewport"
-            folder = step.get("folder")
+            folder = step.get("folder") or step.get("directory") or step.get("subfolder")
+            name = target or f"step_{idx:02d}"
+            # Defensive parse: planner sometimes emits "folder/name.png"
+            # as a single name field even though we asked for separate
+            # `folder` + `name`. Promote the prefix to folder when
+            # folder wasn't explicitly set. Sanitization happens in the
+            # store; this just preserves intent.
+            if folder is None and "/" in name:
+                folder, name = name.split("/", 1)
             r = await deps.browser.screenshot(
-                ScreenshotArgs(
-                    name=target or f"step_{idx:02d}",
-                    mode=mode, folder=folder,
-                ),
+                ScreenshotArgs(name=name, mode=mode, folder=folder),
             )
         elif action == "screenshot_all":
-            folder = step.get("folder")
+            folder = step.get("folder") or step.get("directory") or step.get("subfolder")
+            name = target or f"step_{idx:02d}_all"
+            if folder is None and "/" in name:
+                folder, name = name.split("/", 1)
             r = await deps.browser.screenshot_all(
-                ScreenshotArgs(
-                    name=target or f"step_{idx:02d}_all",
-                    folder=folder,
-                ),
+                ScreenshotArgs(name=name, folder=folder),
             )
         elif action == "scroll":
             r = await deps.browser.scroll(ScrollArgs(amount=(target or value or "down")))
         elif action == "scroll_to":
             r = await deps.browser.scroll_to(ScrollToArgs(target=target))
+        elif action == "visit_each_link":
+            folder = step.get("folder") or step.get("directory") or step.get("subfolder")
+            name_tpl = (
+                step.get("name_template") or step.get("name")
+                or step.get("target") or "item_{i:02d}"
+            )
+            if folder is None and "/" in name_tpl:
+                folder, name_tpl = name_tpl.split("/", 1)
+            r = await deps.browser.visit_each_link(VisitEachLinkArgs(
+                url_pattern=step.get("url_pattern") or step.get("pattern") or "/",
+                limit=int(step.get("limit", 10)),
+                name_template=name_tpl,
+                folder=folder,
+            ))
         elif action == "extract":
             r = await deps.browser.extract(ExtractArgs(json_schema=state.get("extract_schema") or {}))
         elif action == "done":
@@ -249,6 +279,15 @@ def make_act_node(deps: AgentDeps):
             arts = r.data.get("artifacts") or []
             if arts:
                 update["evidence"] = arts
+        if action == "visit_each_link" and r.status == "ok":
+            arts = r.data.get("artifacts") or []
+            if arts:
+                update["evidence"] = arts
+            visited = r.data.get("visited") or []
+            if visited:
+                current = state.get("observations") or []
+                projected = current + [{"kind": "extract", "data": {"visited": visited}}]
+                update["observations"] = compact_observations(projected)
         if action == "extract" and r.status == "ok":
             # observations is non-reducer now; append + compact explicitly.
             current = state.get("observations") or []

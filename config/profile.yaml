@@ -9,7 +9,7 @@ models:
 
 browser:
   backend: local              # local | browserbase
-  headless: false
+  headless: true
   concurrency: 4
   stealth: true
   viewport: { width: 1440, height: 900 }

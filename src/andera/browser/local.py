@@ -267,6 +267,74 @@ class LocalPlaywrightSession:
         except Exception as e:
             return {"found": False, "y": 0, "target": target, "error": str(e)}
 
+    async def visit_each_link(
+        self,
+        *,
+        url_pattern: str,
+        limit: int = 10,
+        name_template: str = "item_{i:02d}",
+        folder: str | None = None,
+        full_page: bool = False,
+    ) -> dict[str, Any]:
+        """Iterate through links on the current page matching a URL substring,
+        visit each one, screenshot + snapshot it, then return the collected
+        observations. The planner emits ONE step; we handle the loop so the
+        LLM never tracks positions or writes per-link selectors.
+
+        name_template supports `{i}` and `{i:02d}` for the zero-based index.
+        Both `name_template` and `folder` can contain slashes — the
+        subfolder is derived naturally from whichever side has the slash.
+        """
+        import json as _json
+        js = f"""
+        ((pattern, limit) => {{
+          const anchors = Array.from(document.querySelectorAll('a[href]'));
+          const seen = new Set();
+          const out = [];
+          for (const a of anchors) {{
+            if (!a.href.includes(pattern)) continue;
+            if (seen.has(a.href)) continue;
+            seen.add(a.href);
+            out.push({{url: a.href, title: (a.innerText || a.textContent || '').trim().slice(0, 160)}});
+            if (out.length >= limit) break;
+          }}
+          return out;
+        }})({_json.dumps(url_pattern)}, {int(limit)})
+        """
+        candidates = await self._page.evaluate(js)
+        visited: list[dict[str, Any]] = []
+        artifacts: list[Artifact] = []
+        origin_url = self._page.url
+        for i, link in enumerate(candidates):
+            try:
+                await self._page.goto(link["url"], wait_until="domcontentloaded")
+                await self._page.wait_for_timeout(300)
+                name = name_template.format(i=i)
+                art = await self.screenshot(name, full_page=full_page, folder=folder)
+                artifacts.append(art)
+                snap = await build_snapshot(self._page)
+                visited.append({
+                    "url": link["url"],
+                    "title": link["title"],
+                    "page_url": snap.get("url"),
+                    "page_title": snap.get("title"),
+                    "inner_text": (snap.get("inner_text") or "")[:3000],
+                    "artifact_sha": art.sha256,
+                })
+            except Exception as e:
+                visited.append({"url": link["url"], "error": str(e)})
+        # Best-effort: return to the original listing so subsequent plan
+        # steps see the expected page.
+        try:
+            await self._page.goto(origin_url, wait_until="domcontentloaded")
+        except Exception:
+            pass
+        return {
+            "visited": visited,
+            "count": len(visited),
+            "artifacts": [a.model_dump(mode="json") for a in artifacts],
+        }
+
     async def screenshot_chunks(
         self, name: str, *, folder: str | None = None,
     ) -> list[Artifact]:

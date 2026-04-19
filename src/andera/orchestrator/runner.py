@@ -240,10 +240,15 @@ class RunWorkflow:
             # Preflight: hit start_url once before the planner spends an LLM
             # call. If the site redirects to a login wall, fail the sample
             # immediately with an actionable message. No LLM tokens wasted.
+            # Bonus: the resulting snapshot is fed into the planner so it
+            # sees the ACTUAL page (titles, visible text, interactives)
+            # instead of planning blind from the task prompt alone.
+            preflight_snapshot: dict[str, Any] | None = None
             if start_url:
                 try:
                     await session.goto(start_url)
                     snap = await session.snapshot()
+                    preflight_snapshot = snap
                     landed = snap.get("url") or start_url
                     if looks_logged_out(landed) and host is not None:
                         suggestion = (
@@ -286,6 +291,13 @@ class RunWorkflow:
                 "start_url": job.get("start_url"),
                 "extract_schema": self.task.get("extract_schema") or {},
                 "status": "pending",
+                # Seed observations with the preflight snapshot so the
+                # planner sees the actual page (titles, interactives,
+                # visible text) before emitting its first plan.
+                "observations": (
+                    [{"kind": "snapshot", "data": preflight_snapshot}]
+                    if preflight_snapshot else []
+                ),
             }
             try:
                 final = await run_sample(
