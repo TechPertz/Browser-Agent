@@ -1,0 +1,44 @@
+# Andera profile — the single switch panel for all runtime behavior.
+# Swap providers/backends here, never in code.
+
+models:
+  planner:   { provider: anthropic, model: claude-opus-4-7 }
+  navigator: { provider: anthropic, model: claude-sonnet-4-6 }
+  extractor: { provider: anthropic, model: claude-haiku-4-5-20251001 }
+  judge:     { provider: anthropic, model: claude-opus-4-7 }
+
+browser:
+  backend: local              # local | browserbase
+  headless: false
+  concurrency: 4
+  stealth: true
+  viewport: { width: 1440, height: 900 }
+
+queue:
+  backend: sqlite             # sqlite | redis | nats
+  path: ./data/queue.db
+
+storage:
+  artifacts:
+    backend: filesystem       # filesystem | s3
+    root: ./runs
+  metadata:
+    backend: sqlite           # sqlite | postgres
+    path: ./data/state.db
+
+integrations:
+  github:  { mode: auto,   token_env: GITHUB_TOKEN }
+  linear:  { mode: auto,   token_env: LINEAR_TOKEN }
+  jira:    { mode: manual }
+  workday: { mode: auto,   base_url: http://localhost:8001 }
+
+observability:
+  langfuse:
+    enabled: false
+    host: http://localhost:3000
+    public_key_env: LANGFUSE_PUBLIC_KEY
+    secret_key_env: LANGFUSE_SECRET_KEY
+
+eval:
+  gate_accuracy: 0.9
+  tasks_dir: ./config/tasks
