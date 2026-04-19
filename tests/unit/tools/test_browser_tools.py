@@ -22,8 +22,8 @@ class _FakeSession:
     async def type(self, s, v):
         self.calls.append(("type", s, v))
 
-    async def screenshot(self, name, *, full_page=True):
-        self.calls.append(("screenshot", name, full_page))
+    async def screenshot(self, name, *, full_page=True, folder=None):
+        self.calls.append(("screenshot", name, full_page, folder))
         return Artifact(sha256="a" * 64, name=name, mime="image/png", size=4, path="/tmp/x.png")
 
     async def scroll(self, amount):
@@ -34,8 +34,8 @@ class _FakeSession:
         self.calls.append(("scroll_to", target))
         return {"found": True, "y": 1200, "target": target}
 
-    async def screenshot_chunks(self, name):
-        self.calls.append(("screenshot_chunks", name))
+    async def screenshot_chunks(self, name, *, folder=None):
+        self.calls.append(("screenshot_chunks", name, folder))
         return [
             Artifact(sha256=("b" * 64)[:-1] + str(i), name=f"{name}_chunk{i:02d}.png",
                      mime="image/png", size=4, path=f"/tmp/x_{i}.png")

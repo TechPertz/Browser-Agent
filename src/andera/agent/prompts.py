@@ -20,9 +20,9 @@ Each step MUST be one of:
   - {"action": "type", "target": "<css selector>", "value": "<text>"}
   - {"action": "scroll", "target": "down"|"up"|"top"|"bottom"|"<px>"}
   - {"action": "scroll_to", "target": "<visible text OR css selector>"}
-  - {"action": "screenshot", "target": "<short_name>", "mode": "viewport"}
-  - {"action": "screenshot", "target": "<short_name>", "mode": "full"}
-  - {"action": "screenshot_all", "target": "<short_name>"}
+  - {"action": "screenshot", "target": "<short_name>", "mode": "viewport", "folder": "<optional-slug>"}
+  - {"action": "screenshot", "target": "<short_name>", "mode": "full",     "folder": "<optional-slug>"}
+  - {"action": "screenshot_all", "target": "<short_name>", "folder": "<optional-slug>"}
   - {"action": "extract", "target": "fields"}   # extracts per extract_schema
   - {"action": "done", "target": "ok"}
 
@@ -38,9 +38,28 @@ Screenshot guidance (important):
   - For targeted reveal of a specific element, use scroll_to(text="…") THEN
     a viewport screenshot. This is cheaper than screenshot_all.
 
+Folder guidance (for per-item / per-row tasks):
+  - If the task says "save each item's evidence under a folder named X" or
+    "create a folder per <thing> and save screenshots there", derive a short
+    filesystem-safe slug from the input_data row (e.g. input_data.repo
+    "facebook/react" → folder "facebook-react") and include it on EVERY
+    screenshot step for that sample as "folder": "<slug>".
+  - Do NOT invent folder names from thin air. The slug MUST come from
+    input_data. When input_data is empty, omit the folder field entirely.
+  - Screenshots land in runs/<run_id>/<folder>/<name>.png as hardlinks to
+    the content-addressed blob, so the human-readable layout is a free
+    side-effect; you don't need a separate "mkdir" action.
+
+Extraction guidance:
+  - If the target schema is non-empty, plan your steps to collect the
+    evidence you need to fill every schema field.
+  - If the target schema is empty, the task is action-oriented (capture
+    evidence, file things, navigate a flow) — no "extract" step is needed;
+    end with "done" once the evidence is captured.
+
 Include at least one screenshot BEFORE and AFTER any click that changes the
-page so evidence is captured. Prefer the simplest plan that collects the
-evidence needed to fill every schema field. Output ONLY the JSON array of steps."""
+page so evidence is captured. Prefer the simplest plan. Output ONLY the JSON
+array of steps."""
 
 
 NAVIGATOR_SYSTEM = """You are the Navigator. Given the current DOM snapshot and the
@@ -86,6 +105,21 @@ UNCERTAIN. Respond with ONE JSON object:
 
 'pass' requires: every required schema field is non-null AND evidence artifacts
 exist that plausibly support each value. Be strict."""
+
+
+JUDGE_SYSTEM_ACTION = """You are the Judge for an action-oriented task (no
+structured extraction schema). Given the task description and the list of
+captured evidence artifacts, decide whether the agent completed the task.
+
+Respond with ONE JSON object:
+  {"verdict": "pass"|"fail"|"uncertain", "reason": "<one sentence>"}.
+
+'pass' requires: the evidence list shows the agent visited the intended
+pages / captured the screenshots the task asked for. Count and variety of
+artifacts matter here — e.g. "screenshot each of top 10 PRs" needs ~10
+artifacts. 'fail' if the agent produced zero evidence or clearly bailed
+before completing the flow. 'uncertain' only if the evidence is suggestive
+but ambiguous."""
 
 
 def planner_user(task_prompt: str, input_data: dict[str, Any],

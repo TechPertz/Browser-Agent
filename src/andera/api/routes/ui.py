@@ -11,8 +11,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+import uuid
+
 import yaml
-from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -55,18 +57,55 @@ async def new_run_page(request: Request) -> HTMLResponse:
 @router.post("/ui/runs/create")
 async def create_run_from_form(
     request: Request,
-    task_path: str = Form(...),
-    input_path: str = Form(...),
+    prompt: str = Form(...),
+    repeat: str = Form(""),
     max_samples: str = Form(""),
+    input_file: UploadFile | None = File(None),
 ) -> Any:
-    # Reuse the JSON API so we only have one source of truth.
+    """Accept the NLP-first form: natural-language task + optional upload.
+
+    When `repeat` is checked, the uploaded file is persisted under
+    runs/<run_id>/input.<ext> and its path is fed to the JSON API. This
+    keeps a single source of truth — the JSON API does the heavy work;
+    this handler just adapts multipart input into that shape.
+    """
     from .runs import CreateRunRequest, create_run
+
+    repeat_flag = repeat.strip().lower() in ("true", "on", "1", "yes")
     max_n = int(max_samples) if max_samples.strip() else None
+
+    # Pre-allocate a run_id so we can place the uploaded file under it.
+    run_id = f"run-{uuid.uuid4().hex[:8]}"
+    input_path_str: str | None = None
+
+    if repeat_flag:
+        if input_file is None or not input_file.filename:
+            return templates.TemplateResponse(
+                request, "new_run.html",
+                {"error": "repeat mode requires an input file"},
+                status_code=400,
+            )
+        data = await input_file.read()
+        if not data:
+            return templates.TemplateResponse(
+                request, "new_run.html",
+                {"error": "uploaded input file is empty"},
+                status_code=400,
+            )
+        ext = Path(input_file.filename).suffix or ".csv"
+        run_dir = Path("runs") / run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        saved = run_dir / f"input{ext}"
+        saved.write_bytes(data)
+        input_path_str = str(saved)
+
     try:
         result = await create_run(CreateRunRequest(
-            task_path=task_path,
-            input_path=input_path,
+            prompt=prompt,
+            input_path=input_path_str,
+            repeat=repeat_flag,
             max_samples=max_n,
+            run_id=run_id,
         ))
     except HTTPException as e:
         return templates.TemplateResponse(

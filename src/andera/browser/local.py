@@ -197,7 +197,9 @@ class LocalPlaywrightSession:
     async def type(self, selector: str, value: str) -> None:
         await self._page.fill(selector, value)
 
-    async def screenshot(self, name: str, *, full_page: bool = True) -> Artifact:
+    async def screenshot(
+        self, name: str, *, full_page: bool = True, folder: str | None = None,
+    ) -> Artifact:
         data = await self._page.screenshot(full_page=full_page)
         final_name = name if name.endswith(".png") else f"{name}.png"
         return await self._artifacts.put(
@@ -206,6 +208,7 @@ class LocalPlaywrightSession:
             mime="image/png",
             sample_id=self._sample_id,
             run_id=self._run_id,
+            subfolder=folder,
         )
 
     async def scroll(self, amount: str | int) -> dict[str, Any]:
@@ -264,7 +267,9 @@ class LocalPlaywrightSession:
         except Exception as e:
             return {"found": False, "y": 0, "target": target, "error": str(e)}
 
-    async def screenshot_chunks(self, name: str) -> list[Artifact]:
+    async def screenshot_chunks(
+        self, name: str, *, folder: str | None = None,
+    ) -> list[Artifact]:
         """Deterministic full-page walk: scroll top → bottom in viewport
         chunks, capture each, return ordered artifacts. The planner does
         not track positions — chunk order preserves them.
@@ -288,6 +293,7 @@ class LocalPlaywrightSession:
             art = await self._artifacts.put(
                 png, f"{base}_chunk{i:02d}.png", mime="image/png",
                 sample_id=self._sample_id, run_id=self._run_id,
+                subfolder=folder,
             )
             artifacts.append(art)
         return artifacts

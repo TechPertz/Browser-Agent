@@ -3,14 +3,38 @@
 {% block title %}New run · Andera{% endblock %}
 {% block content %}
 <h2>New run</h2>
-<div class="card" style="max-width: 640px;">
-  <form hx-post="/ui/runs/create" hx-swap="outerHTML">
-    <label>Task file</label>
-    <input name="task_path" value="config/tasks/03-github-issue.yaml" required />
-    <label>Input file (csv / jsonl / json / xlsx)</label>
-    <input name="input_path" placeholder="runs/inputs/issues.csv" required />
-    <label>Max samples (optional)</label>
+<div class="card" style="max-width: 720px;">
+  <form action="/ui/runs/create" method="post" enctype="multipart/form-data">
+    <label>Task (natural language)</label>
+    <textarea
+      name="prompt"
+      rows="6"
+      required
+      placeholder="e.g. For each repo in the input file, navigate to its closed pull requests page and capture a viewport screenshot of the top 10 closed PRs. Save the screenshots under a folder named after the repo (replace '/' with '-' in the slug)."
+      style="width: 100%; font-family: inherit; font-size: 13px; padding: 8px;"
+    ></textarea>
+
+    <div style="margin-top: 16px; display: flex; align-items: center; gap: 8px;">
+      <input type="checkbox" id="repeat" name="repeat" value="true"
+             onchange="document.getElementById('input-row').style.display = this.checked ? 'block' : 'none';" />
+      <label for="repeat" style="margin: 0;">
+        Repeat — run this task for every row of an input file
+      </label>
+    </div>
+
+    <div id="input-row" style="margin-top: 16px; display: none;">
+      <label>Input file (CSV / JSONL / JSON / XLSX)</label>
+      <input type="file" name="input_file" accept=".csv,.jsonl,.json,.xlsx" />
+      <div style="color: var(--dim); font-size: 11px; margin-top: 4px;">
+        Each row becomes one sample. Row fields are available to the planner
+        as <code>input_data</code>. Derive per-row folder slugs from those
+        fields if the task asks for per-item evidence directories.
+      </div>
+    </div>
+
+    <label style="margin-top: 16px;">Max samples (optional)</label>
     <input name="max_samples" type="number" min="1" placeholder="leave blank for all rows" />
+
     <div style="margin-top: 24px;">
       <button type="submit">Start run</button>
     </div>

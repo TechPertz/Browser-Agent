@@ -67,8 +67,11 @@ def test_runs_fragment_shows_completed_run(client, tmp_path):
 def test_new_run_page(client):
     r = client.get("/ui/runs/new")
     assert r.status_code == 200
-    assert "Task file" in r.text
-    assert "action" not in r.text.lower() or "hx-post" in r.text  # HTMX form
+    # New form: NLP textarea + repeat checkbox + optional file upload.
+    assert 'name="prompt"' in r.text
+    assert 'name="repeat"' in r.text
+    assert 'type="file"' in r.text
+    assert 'multipart/form-data' in r.text
 
 
 def test_run_detail_404(client):
@@ -122,22 +125,18 @@ def test_sample_detail_renders(client, tmp_path):
     assert "/api/screencast" in r.text  # live browser section
 
 
-def test_create_run_form_validates(client, tmp_path):
-    """Submitting the new-run form with missing files re-renders with error."""
+def test_create_run_form_validates(client):
+    """Repeat without an uploaded file re-renders the form with an error."""
     r = client.post(
         "/ui/runs/create",
-        data={
-            "task_path": str(tmp_path / "missing.yaml"),
-            "input_path": str(tmp_path / "missing.csv"),
-        },
+        data={"prompt": "do something", "repeat": "true"},
     )
-    # HTMX forms expect 200 with replaced body; our handler returns 400 template
     assert r.status_code == 400
-    assert "task not found" in r.text or "not found" in r.text
+    assert "requires an input file" in r.text
 
 
 def test_create_run_form_happy_path(client, tmp_path, monkeypatch):
-    """Valid task+input hands off to create_run and redirects to detail."""
+    """NLP prompt + CSV upload routes through the JSON API and redirects."""
     from andera.api.routes import runs as runs_route
     from andera.config import load_profile as real_load_profile
 
@@ -151,21 +150,21 @@ def test_create_run_form_happy_path(client, tmp_path, monkeypatch):
             })()
     monkeypatch.setattr(runs_route, "RunWorkflow", _FakeWF)
 
-    # Give load_profile the real project profile instead of looking in tmp cwd.
     project_root = Path(__file__).resolve().parents[3]
     monkeypatch.setattr(
         runs_route, "load_profile",
         lambda: real_load_profile(project_root / "config" / "profile.yaml"),
     )
 
-    task_p = tmp_path / "task.yaml"
-    task_p.write_text(yaml.safe_dump({"task_id": "t", "prompt": "x", "extract_schema": {}}))
-    input_p = tmp_path / "rows.csv"
-    input_p.write_text("url\nhttps://a\n")
-
+    csv_bytes = b"repo,url\nfacebook/react,https://github.com/facebook/react\n"
     r = client.post(
         "/ui/runs/create",
-        data={"task_path": str(task_p), "input_path": str(input_p), "max_samples": ""},
+        data={
+            "prompt": "go to each repo and screenshot the closed PRs page",
+            "repeat": "true",
+            "max_samples": "",
+        },
+        files={"input_file": ("rows.csv", csv_bytes, "text/csv")},
         follow_redirects=False,
     )
     assert r.status_code == 303

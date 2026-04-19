@@ -33,6 +33,12 @@ class ScreenshotArgs(BaseModel):
     # viewport = what the user sees (small, default). full = whole scrollable
     # document (big, evidence-grade). Planner picks based on task wording.
     mode: str = "viewport"
+    # Optional per-item subfolder under the run root. Use when the task
+    # says "save each item's evidence under a folder named X" — planner
+    # derives the slug from input_data and passes it here. The
+    # content-addressed blob is still written (audit / dedup), AND a
+    # hardlink is placed at runs/<run_id>/<folder>/<name>.png.
+    folder: str | None = None
 
 
 class ScrollArgs(BaseModel):
@@ -79,8 +85,14 @@ class BrowserTools:
     async def screenshot(self, args: ScreenshotArgs) -> ToolResult:
         async def run():
             full = (args.mode == "full")
-            artifact = await self._session.screenshot(args.name, full_page=full)
-            return {"artifact": artifact.model_dump(mode="json"), "mode": args.mode}
+            artifact = await self._session.screenshot(
+                args.name, full_page=full, folder=args.folder,
+            )
+            return {
+                "artifact": artifact.model_dump(mode="json"),
+                "mode": args.mode,
+                "folder": args.folder,
+            }
 
         return await invoke("browser.screenshot", args.model_dump(), run)
 
@@ -101,10 +113,13 @@ class BrowserTools:
         `mode` field on ScreenshotArgs is ignored — all chunks are
         viewport-sized by construction. Returns artifacts[] + chunk count."""
         async def run():
-            arts = await self._session.screenshot_chunks(args.name)
+            arts = await self._session.screenshot_chunks(
+                args.name, folder=args.folder,
+            )
             return {
                 "artifacts": [a.model_dump(mode="json") for a in arts],
                 "chunks": len(arts),
+                "folder": args.folder,
             }
 
         return await invoke("browser.screenshot_all", args.model_dump(), run)

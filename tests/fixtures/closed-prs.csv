@@ -1,0 +1,16 @@
+repo,url
+facebook/react,https://github.com/facebook/react/pulls?q=is%3Apr+is%3Aclosed
+microsoft/vscode,https://github.com/microsoft/vscode/pulls?q=is%3Apr+is%3Aclosed
+tensorflow/tensorflow,https://github.com/tensorflow/tensorflow/pulls?q=is%3Apr+is%3Aclosed
+pytorch/pytorch,https://github.com/pytorch/pytorch/pulls?q=is%3Apr+is%3Aclosed
+vuejs/vue,https://github.com/vuejs/vue/pulls?q=is%3Apr+is%3Aclosed
+kubernetes/kubernetes,https://github.com/kubernetes/kubernetes/pulls?q=is%3Apr+is%3Aclosed
+rust-lang/rust,https://github.com/rust-lang/rust/pulls?q=is%3Apr+is%3Aclosed
+golang/go,https://github.com/golang/go/pulls?q=is%3Apr+is%3Aclosed
+django/django,https://github.com/django/django/pulls?q=is%3Apr+is%3Aclosed
+rails/rails,https://github.com/rails/rails/pulls?q=is%3Apr+is%3Aclosed
+nodejs/node,https://github.com/nodejs/node/pulls?q=is%3Apr+is%3Aclosed
+langchain-ai/langgraph,https://github.com/langchain-ai/langgraph/pulls?q=is%3Apr+is%3Aclosed
+microsoft/playwright,https://github.com/microsoft/playwright/pulls?q=is%3Apr+is%3Aclosed
+openai/openai-python,https://github.com/openai/openai-python/pulls?q=is%3Apr+is%3Aclosed
+anthropics/anthropic-sdk-python,https://github.com/anthropics/anthropic-sdk-python/pulls?q=is%3Apr+is%3Aclosed

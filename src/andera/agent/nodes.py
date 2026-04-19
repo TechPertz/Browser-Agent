@@ -203,12 +203,20 @@ def make_act_node(deps: AgentDeps):
             r = await deps.browser.type(TypeArgs(selector=target, value=value))
         elif action == "screenshot":
             mode = step.get("mode") or "viewport"
+            folder = step.get("folder")
             r = await deps.browser.screenshot(
-                ScreenshotArgs(name=target or f"step_{idx:02d}", mode=mode),
+                ScreenshotArgs(
+                    name=target or f"step_{idx:02d}",
+                    mode=mode, folder=folder,
+                ),
             )
         elif action == "screenshot_all":
+            folder = step.get("folder")
             r = await deps.browser.screenshot_all(
-                ScreenshotArgs(name=target or f"step_{idx:02d}_all"),
+                ScreenshotArgs(
+                    name=target or f"step_{idx:02d}_all",
+                    folder=folder,
+                ),
             )
         elif action == "scroll":
             r = await deps.browser.scroll(ScrollArgs(amount=(target or value or "down")))
@@ -365,7 +373,14 @@ def make_extract_node(deps: AgentDeps):
     async def extract(state: AgentState) -> dict:
         schema = state.get("extract_schema") or {}
         if not schema:
-            return {"extracted": {}, "status": "judging"}
+            # Action-oriented task (no structured extraction): nothing to
+            # extract. Surface a small summary for the judge so it has
+            # something to reason about instead of an empty dict.
+            evidence = state.get("evidence") or []
+            return {
+                "extracted": {"evidence_count": len(evidence)},
+                "status": "judging",
+            }
 
         observations = state.get("observations") or []
         judge_feedback = state.get("judge_feedback")
@@ -412,12 +427,21 @@ def make_extract_node(deps: AgentDeps):
 
 def make_judge_node(deps: AgentDeps):
     async def judge(state: AgentState) -> dict:
+        schema = state.get("extract_schema") or {}
+        evidence = state.get("evidence") or []
+        # Action-oriented task: no schema to validate, so the verdict is
+        # "did the plan complete + is there evidence?" Let the judge LLM
+        # see the task + the evidence list and decide.
         messages = [
-            {"role": "system", "content": prompts.JUDGE_SYSTEM},
+            {
+                "role": "system",
+                "content": prompts.JUDGE_SYSTEM if schema
+                else prompts.JUDGE_SYSTEM_ACTION,
+            },
             {"role": "user", "content": prompts.judge_user(
                 state.get("task_prompt", ""),
                 state.get("extracted") or {},
-                state.get("evidence") or [],
+                evidence,
             )},
         ]
         out = await deps.judge.complete(messages=messages)

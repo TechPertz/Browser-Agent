@@ -26,6 +26,18 @@ def guess_mime(name: str, fallback: str = "application/octet-stream") -> str:
     return mime or fallback
 
 
+def _safe_path_component(s: str) -> str:
+    """Sanitize a user/LLM-supplied name so it can't escape the run root.
+
+    Strips path separators, replaces non-[alnum._-] with '_', caps length.
+    Never empty — returns '_' if input sanitizes to nothing.
+    """
+    s = s.replace("/", "_").replace("\\", "_").replace("..", "_")
+    out = "".join(c if (c.isalnum() or c in "._-") else "_" for c in s)
+    out = out.strip("._") or "_"
+    return out[:120]
+
+
 class FilesystemArtifactStore:
     """Implements the `ArtifactStore` Protocol against the local filesystem.
 
@@ -56,6 +68,21 @@ class FilesystemArtifactStore:
             tmp = dest.with_suffix(dest.suffix + ".tmp")
             tmp.write_bytes(content)
             tmp.rename(dest)  # atomic on POSIX
+        # Human-readable subfolder placement (hardlink to the blob).
+        # Blob remains source of truth for sha tracking; subfolder copy
+        # is for humans browsing per-sample evidence directories.
+        subfolder = tags.get("subfolder")
+        if subfolder:
+            safe_sub = _safe_path_component(str(subfolder))
+            safe_name = _safe_path_component(str(name))
+            human_dir = self.root / safe_sub
+            human_dir.mkdir(parents=True, exist_ok=True)
+            human_path = human_dir / safe_name
+            if not human_path.exists():
+                try:
+                    human_path.hardlink_to(dest)
+                except (OSError, NotImplementedError):
+                    human_path.write_bytes(content)
         return Artifact(
             sha256=sha,
             name=name,

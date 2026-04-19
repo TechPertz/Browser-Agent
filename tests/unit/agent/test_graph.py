@@ -39,7 +39,7 @@ class FakeSession:
     async def click(self, s): ...
     async def type(self, s, v): ...
 
-    async def screenshot(self, name, *, full_page=True):
+    async def screenshot(self, name, *, full_page=True, folder=None):
         return Artifact(
             sha256="a" * 64, name=f"{name}.png", mime="image/png", size=10,
             path=f"/tmp/{name}.png",
@@ -51,7 +51,7 @@ class FakeSession:
     async def scroll_to(self, target):
         return {"found": True, "y": 0, "target": target}
 
-    async def screenshot_chunks(self, name):
+    async def screenshot_chunks(self, name, *, folder=None):
         return [await self.screenshot(f"{name}_chunk00")]
 
     async def extract(self, schema):

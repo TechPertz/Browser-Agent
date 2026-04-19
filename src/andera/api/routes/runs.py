@@ -26,28 +26,59 @@ router = APIRouter()
 
 
 class CreateRunRequest(BaseModel):
-    task_path: str
-    input_path: str
+    """Flexible create-run payload.
+
+    Two ways to describe the task:
+      - task_path: path to a task YAML on disk (legacy / CLI parity)
+      - prompt:    NLP task string; synthesized into an inline task dict
+                   with empty extract_schema (action-oriented flow)
+
+    Two ways to feed rows:
+      - input_path: load CSV / JSONL / JSON / XLSX
+      - no input_path + repeat=False: single sample with empty row
+    repeat=True without an input file is rejected (nothing to iterate).
+    """
+
+    task_path: str | None = None
+    prompt: str | None = None
+    input_path: str | None = None
+    repeat: bool = False
     max_samples: int | None = None
     run_id: str | None = None
 
 
 @router.post("/api/runs")
 async def create_run(req: CreateRunRequest) -> dict[str, Any]:
-    task_path = Path(req.task_path)
-    input_path = Path(req.input_path)
-    if not task_path.exists():
-        raise HTTPException(400, f"task not found: {task_path}")
-    if not input_path.exists():
-        raise HTTPException(400, f"input not found: {input_path}")
+    if req.task_path:
+        task_path = Path(req.task_path)
+        if not task_path.exists():
+            raise HTTPException(400, f"task not found: {task_path}")
+        with task_path.open() as f:
+            task_spec = yaml.safe_load(f) or {}
+    elif req.prompt:
+        task_spec = {
+            "task_id": f"adhoc-{uuid.uuid4().hex[:6]}",
+            "task_name": "Ad-hoc task",
+            "prompt": req.prompt,
+            # Empty schema -> action-oriented: agent captures evidence
+            # and the judge scores on completeness, not field values.
+            "extract_schema": {},
+        }
+    else:
+        raise HTTPException(400, "either `task_path` or `prompt` is required")
 
-    with task_path.open() as f:
-        task_spec = yaml.safe_load(f)
-
-    try:
-        rows = load_inputs(input_path)
-    except Exception as e:
-        raise HTTPException(400, f"input load failed: {e}") from e
+    if req.input_path:
+        input_path = Path(req.input_path)
+        if not input_path.exists():
+            raise HTTPException(400, f"input not found: {input_path}")
+        try:
+            rows = load_inputs(input_path)
+        except Exception as e:
+            raise HTTPException(400, f"input load failed: {e}") from e
+    else:
+        if req.repeat:
+            raise HTTPException(400, "repeat=true requires an input file")
+        rows = [{}]
 
     profile = load_profile()
     run_id = req.run_id or f"run-{uuid.uuid4().hex[:8]}"
