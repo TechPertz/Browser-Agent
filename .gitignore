@@ -15,6 +15,7 @@ build/
 data/
 runs/
 logs/
+services/mock_workday/attachments/
 
 # Tool caches
 .pytest_cache/

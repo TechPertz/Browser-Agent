@@ -1,0 +1,15 @@
+{
+  "task_file": "config/tasks/05-workday-form-download.yaml",
+  "cases": [
+    {
+      "sample_id": "c0",
+      "input": {"employee_id": "E-1001", "request_type": "PTO", "start_date": "2026-05-01", "notes": "x"},
+      "expected": {"employee_id": "E-1001", "request_type": "PTO"}
+    },
+    {
+      "sample_id": "c1",
+      "input": {"employee_id": "E-1002", "request_type": "Expense", "start_date": "2026-04-28", "notes": "y"},
+      "expected": {"employee_id": "E-1002", "request_type": "Expense"}
+    }
+  ]
+}

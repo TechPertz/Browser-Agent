@@ -1,0 +1,15 @@
+{
+  "task_file": "config/tasks/02-linear-tickets.yaml",
+  "cases": [
+    {
+      "sample_id": "c0",
+      "input": {"url": "https://linear.app/linear/issue/LIN-1"},
+      "expected": {"ticket_no": "LIN-1", "assignee": "alice"}
+    },
+    {
+      "sample_id": "c1",
+      "input": {"url": "https://linear.app/linear/issue/LIN-2"},
+      "expected": {"ticket_no": "LIN-2", "assignee": "bob"}
+    }
+  ]
+}

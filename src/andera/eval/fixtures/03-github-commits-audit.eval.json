@@ -1,0 +1,15 @@
+{
+  "task_file": "config/tasks/03-github-commits-audit.yaml",
+  "cases": [
+    {
+      "sample_id": "c0",
+      "input": {"url": "https://github.com/python/cpython/commit/4a0a6cfd2"},
+      "expected": {"sha": "4a0a6cfd2", "checks_passed": 5, "checks_failed": 0}
+    },
+    {
+      "sample_id": "c1",
+      "input": {"url": "https://github.com/python/cpython/commit/f6fc9bdd"},
+      "expected": {"sha": "f6fc9bdd", "checks_passed": 4, "checks_failed": 1}
+    }
+  ]
+}
