@@ -1,0 +1,21 @@
+# Phase 2 acceptance task: extract a GitHub public issue's title/author/state.
+# Chosen over Linear for the phase-2 acceptance test because GitHub issues are
+# publicly readable, so the graph can be exercised end-to-end without any
+# stored credentials or API key for the target site itself.
+
+task_id: gh-issue
+task_name: GitHub public issue — extract title, author, and state
+prompt: |
+  Navigate to the given GitHub issue URL, capture a screenshot of the issue
+  page, and extract the issue's title, the author's username, and the current
+  state (open/closed). Evidence must include a full-page screenshot after the
+  page has loaded.
+
+extract_schema:
+  title: "Issue metadata"
+  type: object
+  required: [title, author, state]
+  properties:
+    title:  { type: string }
+    author: { type: string }
+    state:  { type: string, enum: [open, closed] }

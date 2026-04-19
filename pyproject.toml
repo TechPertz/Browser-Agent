@@ -10,6 +10,8 @@ dependencies = [
     "cryptography>=42",
     "litellm>=1.48",
     "playwright>=1.47",
+    "langgraph>=0.2",
+    "langgraph-checkpoint-sqlite>=2.0",
 ]
 
 [project.optional-dependencies]
