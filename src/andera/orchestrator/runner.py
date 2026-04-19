@@ -294,6 +294,13 @@ class RunWorkflow:
         self._trace.write({"kind": "run.init", "run_id": self.run_id,
                            "task": self.task.get("task_id"),
                            "total": len(self.rows)})
+        # Launch the shared Chromium once for the whole run. Saves
+        # 300-800ms per sample vs the old per-sample launch path.
+        if hasattr(self.pool, "setup"):
+            try:
+                await self.pool.setup()
+            except Exception:
+                pass
 
         if self.resuming:
             # Pull any prior completions into our counters + skip set.
@@ -352,6 +359,13 @@ class RunWorkflow:
                 "concurrency": self.profile.browser.concurrency,
             },
         )
+
+        # Shut down the shared Chromium process we launched at execute() start.
+        if hasattr(self.pool, "teardown"):
+            try:
+                await self.pool.teardown()
+            except Exception:
+                pass
 
         return RunResult(
             run_id=self.run_id,

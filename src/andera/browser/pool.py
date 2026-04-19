@@ -1,9 +1,18 @@
 """Bounded browser session pool.
 
-Enforces the `browser.concurrency` cap from profile.yaml so we never
-launch more than N chromium contexts at once, no matter how many
-samples the orchestrator fans out. Back-pressure falls on the
-semaphore, not the OS.
+Two-layer lifecycle:
+  - ONE Playwright + ONE Chromium browser process launched ONCE per
+    pool in `setup()`. Persistent across all samples.
+  - One BrowserContext + Page opened PER sample in `acquire()`, which
+    is cheap (~5ms). Full per-sample isolation (cookies, storage,
+    network are all context-scoped in Chromium).
+
+Old behavior: launched a fresh Chromium per sample. That's 300-800ms
+of startup per sample × N samples — the single biggest wasted
+wall-clock time in a run. New behavior is a ~100× reduction per
+sample at no isolation cost.
+
+`browser.concurrency` still caps in-flight contexts via a semaphore.
 """
 
 from __future__ import annotations
@@ -11,6 +20,8 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
 from typing import Any
+
+from playwright.async_api import Browser, async_playwright
 
 from andera.contracts import ArtifactStore, BrowserSession
 
@@ -38,9 +49,38 @@ class BrowserPool:
         self._sem = asyncio.Semaphore(concurrency)
         self._concurrency = concurrency
 
+        # Persistent process-level resources
+        self._pw: Any = None
+        self._browser: Browser | None = None
+        self._setup_lock = asyncio.Lock()
+
     @property
     def concurrency(self) -> int:
         return self._concurrency
+
+    async def setup(self) -> None:
+        """Launch Playwright + Chromium ONCE. Idempotent."""
+        async with self._setup_lock:
+            if self._browser is not None:
+                return
+            self._pw = await async_playwright().start()
+            self._browser = await self._pw.chromium.launch(headless=self._headless)
+
+    async def teardown(self) -> None:
+        """Close the persistent browser. Safe to call multiple times."""
+        async with self._setup_lock:
+            if self._browser is not None:
+                try:
+                    await self._browser.close()
+                except Exception:
+                    pass
+                self._browser = None
+            if self._pw is not None:
+                try:
+                    await self._pw.stop()
+                except Exception:
+                    pass
+                self._pw = None
 
     @asynccontextmanager
     async def acquire(
@@ -50,13 +90,21 @@ class BrowserPool:
         run_id: str | None = None,
         storage_state: str | dict[str, Any] | None = None,
     ):
-        """Yield a BrowserSession bounded by the concurrency semaphore."""
+        """Yield a BrowserSession bounded by the concurrency semaphore.
+
+        Lazy-starts the persistent browser on first acquire so callers
+        that never use the pool don't pay the launch cost.
+        """
         await self._sem.acquire()
         session: BrowserSession | None = None
         try:
-            session = await LocalPlaywrightSession.create(
+            if self._browser is None:
+                await self.setup()
+            assert self._browser is not None
+            session = await LocalPlaywrightSession.from_browser(
+                browser=self._browser,
+                playwright_ctx=self._pw,
                 artifacts=self._artifacts,
-                headless=self._headless,
                 viewport=self._viewport,
                 sample_id=sample_id,
                 run_id=run_id,

@@ -40,6 +40,7 @@ class LocalPlaywrightSession:
         playwright_ctx: Any,
         sample_id: str | None = None,
         run_id: str | None = None,
+        owns_browser: bool = True,
     ) -> None:
         self._artifacts = artifacts
         self._browser = browser
@@ -48,6 +49,9 @@ class LocalPlaywrightSession:
         self._pw = playwright_ctx
         self._sample_id = sample_id
         self._run_id = run_id
+        # When false (pool-managed case), close() only closes the context,
+        # leaving the shared Browser process alive for the next sample.
+        self._owns_browser = owns_browser
 
     @classmethod
     async def create(
@@ -87,6 +91,53 @@ class LocalPlaywrightSession:
             playwright_ctx=pw,
             sample_id=sample_id,
             run_id=run_id,
+        )
+        inst._rate_limiter = rate_limiter  # type: ignore[attr-defined]
+        return inst
+
+    @classmethod
+    async def from_browser(
+        cls,
+        *,
+        browser: Browser,
+        playwright_ctx: Any,
+        artifacts: ArtifactStore,
+        viewport: dict[str, int] | None = None,
+        sample_id: str | None = None,
+        run_id: str | None = None,
+        storage_state: str | dict[str, Any] | None = None,
+        stealth: bool = False,
+        rate_limiter: Any = None,
+    ) -> "LocalPlaywrightSession":
+        """Build a session using a shared persistent Browser.
+
+        Opens a fresh context + page (cheap, ~5ms). close() will close
+        just the context — the shared browser stays alive for the next
+        caller. This is the hot path when a BrowserPool is in use.
+        """
+        from .stealth import apply_stealth, random_user_agent, random_viewport
+
+        ctx_kwargs: dict[str, Any] = {}
+        if stealth:
+            ctx_kwargs["user_agent"] = random_user_agent()
+            ctx_kwargs["viewport"] = random_viewport()
+        elif viewport is not None:
+            ctx_kwargs["viewport"] = viewport
+        if storage_state is not None:
+            ctx_kwargs["storage_state"] = storage_state
+        context = await browser.new_context(**ctx_kwargs)
+        if stealth:
+            await apply_stealth(context)
+        page = await context.new_page()
+        inst = cls(
+            artifacts=artifacts,
+            browser=browser,
+            context=context,
+            page=page,
+            playwright_ctx=playwright_ctx,
+            sample_id=sample_id,
+            run_id=run_id,
+            owns_browser=False,
         )
         inst._rate_limiter = rate_limiter  # type: ignore[attr-defined]
         return inst
@@ -201,6 +252,18 @@ class LocalPlaywrightSession:
             pass
 
     async def close(self) -> None:
-        await self._context.close()
-        await self._browser.close()
-        await self._pw.stop()
+        try:
+            await self._context.close()
+        except Exception:
+            pass
+        # Only tear down the browser/playwright when this session owns them.
+        # Pool-managed sessions leave the shared Browser alive for reuse.
+        if self._owns_browser:
+            try:
+                await self._browser.close()
+            except Exception:
+                pass
+            try:
+                await self._pw.stop()
+            except Exception:
+                pass

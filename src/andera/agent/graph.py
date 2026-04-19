@@ -82,9 +82,24 @@ async def run_sample(
     checkpoint_db: str | Path = "data/checkpoints.db",
     thread_id: str | None = None,
     recursion_limit: int = 40,
+    compiled_graph: Any = None,
 ) -> dict[str, Any]:
-    """Execute one sample end-to-end. Returns final state."""
+    """Execute one sample end-to-end. Returns final state.
+
+    Compatibility shim: legacy callers (tests, scripts) can invoke
+    without a precompiled graph; the orchestrator prefers
+    `invoke_compiled` below so the graph isn't rebuilt per sample.
+    """
     Path(checkpoint_db).parent.mkdir(parents=True, exist_ok=True)
+    if compiled_graph is not None:
+        config = {
+            "configurable": {
+                "thread_id": thread_id or initial_state.get("sample_id", "t"),
+            },
+            "recursion_limit": recursion_limit,
+        }
+        return await compiled_graph.ainvoke(initial_state, config=config)
+
     async with AsyncSqliteSaver.from_conn_string(str(checkpoint_db)) as saver:
         graph = build_graph(deps).compile(checkpointer=saver)
         config = {
@@ -95,3 +110,19 @@ async def run_sample(
         }
         final = await graph.ainvoke(initial_state, config=config)
         return final
+
+
+async def invoke_compiled(
+    compiled_graph: Any,
+    *,
+    initial_state: AgentState,
+    thread_id: str,
+    recursion_limit: int = 40,
+) -> dict[str, Any]:
+    """Fast path: caller has compiled the graph once and holds the saver
+    context open across many samples."""
+    config = {
+        "configurable": {"thread_id": thread_id},
+        "recursion_limit": recursion_limit,
+    }
+    return await compiled_graph.ainvoke(initial_state, config=config)
