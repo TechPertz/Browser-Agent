@@ -40,6 +40,16 @@ REPLAN_AFTER_CONSECUTIVE_FAILS = 2
 # cap fires. 3 = one initial plan + two replans.
 PLAN_MAX = 3
 
+# Actions that don't mutate the page. The verifier can't tell from a
+# DOM snapshot whether these succeeded (nothing visible changed). If
+# the tool returned status=ok, trust it and advance. Re-verifying via
+# LLM just triggers "I can't tell if it changed → ok=false" loops that
+# burn through the reflection budget without doing anything useful.
+NON_DOM_CHANGING_ACTIONS = {
+    "screenshot", "screenshot_all", "visit_each_link",
+    "scroll", "scroll_to", "extract",
+}
+
 
 @dataclass
 class AgentDeps:
@@ -320,6 +330,23 @@ def make_observe_node(deps: AgentDeps):
 
 def make_verify_node(deps: AgentDeps):
     async def verify(state: AgentState) -> dict:
+        plan = state.get("plan") or []
+        idx = state.get("step_index", 0)
+        current_step = plan[idx] if idx < len(plan) else {}
+        action = current_step.get("action")
+        # Fast-path: non-DOM-changing actions that reported tool-OK.
+        # No LLM verification — just advance. (Tool errors still fall
+        # through to the `last_tool_error` branch below and fail cleanly.)
+        if (
+            action in NON_DOM_CHANGING_ACTIONS
+            and not state.get("last_tool_error")
+        ):
+            return {
+                "step_index": idx + 1,
+                "status": "acting",
+                "consecutive_fails": 0,
+                "last_tool_error": None,
+            }
         # Tool-layer errors are already definitive. Skip the LLM call.
         if state.get("last_tool_error"):
             ok = False
