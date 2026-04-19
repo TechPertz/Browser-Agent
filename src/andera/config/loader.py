@@ -49,6 +49,12 @@ class QueueConfig(BaseModel):
     redis_url: str = "redis://localhost:6379/0"
     redis_prefix: str | None = None     # default: andera:queue:<run_id>
     max_attempts: int = Field(default=3, ge=1, le=20)
+    # When true, the API/coordinator enqueues samples but does NOT
+    # spawn in-process workers — external agent processes (e.g. the
+    # `agent` containers in docker-compose) pull from the shared queue.
+    # Requires backend=redis. Uses the GLOBAL prefix so any agent
+    # can serve any run.
+    distributed: bool = False
 
 
 class ArtifactsConfig(BaseModel):
@@ -59,6 +65,7 @@ class ArtifactsConfig(BaseModel):
 class MetadataConfig(BaseModel):
     backend: Literal["sqlite", "postgres"] = "sqlite"
     path: str = "./data/state.db"
+    postgres_url: str = "postgresql://andera:andera@localhost:5432/andera"
 
 
 class StorageConfig(BaseModel):

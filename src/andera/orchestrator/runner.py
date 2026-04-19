@@ -173,6 +173,10 @@ class RunWorkflow:
     # --- sample plumbing ---
 
     async def _enqueue_all(self) -> None:
+        """Enqueue samples. Inlines task + run_id so a long-lived agent
+        pool that doesn't know which run it's serving can execute any
+        sample straight off the queue — no .run_config.json lookup.
+        In-process workers ignore these extra fields (harmless)."""
         for idx, row in enumerate(self.rows):
             sample_id = f"{self.run_id}-{idx:05d}"
             if sample_id in self._completed_ids:
@@ -182,6 +186,8 @@ class RunWorkflow:
                 "row_index": idx,
                 "input_data": row,
                 "start_url": row.get("url") or self.task.get("default_url"),
+                "run_id": self.run_id,
+                "task": self.task,
             })
 
     async def _run_one(self, job: dict[str, Any]) -> dict[str, Any]:
@@ -294,6 +300,12 @@ class RunWorkflow:
                 pass
 
     async def execute(self) -> RunResult:
+        """Drive the run. In distributed mode, returns immediately after
+        enqueue without spawning in-process workers — external agent
+        containers pull from the shared queue and the caller polls
+        `queue_drained()` / calls `finalize()` when counts hit zero.
+        In default (embedded) mode, workers run locally and this method
+        blocks until the queue drains, then finalizes."""
         self._save_run_config()
         self._install_signal_handlers()
         # Best-effort: Langfuse if configured; always: local JSONL trace sink.
@@ -302,9 +314,10 @@ class RunWorkflow:
         self._trace.write({"kind": "run.init", "run_id": self.run_id,
                            "task": self.task.get("task_id"),
                            "total": len(self.rows)})
-        # Launch the shared Chromium once for the whole run. Saves
-        # 300-800ms per sample vs the old per-sample launch path.
-        if hasattr(self.pool, "setup"):
+
+        distributed = self.profile.queue.distributed
+        # Chromium only belongs in-process when we'll actually run samples here.
+        if not distributed and hasattr(self.pool, "setup"):
             try:
                 await self.pool.setup()
             except Exception:
@@ -319,17 +332,34 @@ class RunWorkflow:
                 kind="run.started", run_id=self.run_id,
                 payload={
                     "resumed": True, "already_completed": len(self._completed_ids),
-                    "reclaimed_stale": reclaimed,
+                    "reclaimed_stale": reclaimed, "distributed": distributed,
                 },
             )
         else:
             self.audit.append(
                 kind="run.started", run_id=self.run_id,
-                payload={"task": self.task.get("task_id"), "total": len(self.rows)},
+                payload={
+                    "task": self.task.get("task_id"),
+                    "total": len(self.rows),
+                    "distributed": distributed,
+                },
             )
 
         await self._enqueue_all()
 
+        if distributed:
+            # External agents process. Hand back a partial RunResult —
+            # the API-side finalizer loop calls finalize() when drained.
+            return RunResult(
+                run_id=self.run_id,
+                run_root=self.run_root,
+                total=len(self.rows),
+                passed=0, failed=0,
+                extracted_rows=[],
+                aggregate_csv=None, manifest=None,
+            )
+
+        # Embedded mode: spawn N workers in-process and block to drain.
         n = max(1, self.profile.browser.concurrency)
         while True:
             await asyncio.gather(*[self._worker(i) for i in range(n)])
@@ -339,6 +369,25 @@ class RunWorkflow:
             if counts.get("pending", 0) == 0:
                 break
 
+        return await self.finalize()
+
+    async def queue_drained(self) -> bool:
+        """True when the queue has no pending AND no claimed items.
+        External finalizer polls this to decide when to wrap the run."""
+        counts = await self.queue.counts()
+        return (counts.get("pending", 0) == 0
+                and counts.get("claimed", 0) == 0)
+
+    async def finalize(self) -> RunResult:
+        """Compute totals from samples.jsonl, write output.csv + manifest,
+        emit run.completed event, and tear down the browser pool.
+        Safe to call once; idempotency guarded by external caller."""
+        # Re-read counters from JSONL so the finalizer (possibly a different
+        # process than the one that enqueued) has the correct totals when
+        # all samples came from agent containers.
+        self._counters = {"total": 0, "passed": 0, "failed": 0}
+        self._completed_ids = set()
+        self._load_completed_from_disk()
         passed = self._counters["passed"]
         failed = self._counters["failed"]
         total = self._counters["total"]
@@ -365,10 +414,12 @@ class RunWorkflow:
                 "planner": self.profile.models.planner.model,
                 "browser_backend": self.profile.browser.backend,
                 "concurrency": self.profile.browser.concurrency,
+                "distributed": self.profile.queue.distributed,
             },
         )
 
         # Shut down the shared Chromium process we launched at execute() start.
+        # (No-op in distributed mode, where the pool was never .setup()'d here.)
         if hasattr(self.pool, "teardown"):
             try:
                 await self.pool.teardown()
