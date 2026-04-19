@@ -170,8 +170,13 @@ def make_act_node(deps: AgentDeps):
         update: dict[str, Any] = {
             "tool_calls": [r.model_dump(mode="json")],
         }
+        # Tool error is an unambiguous failure signal — do not leave it to
+        # the LLM verifier to notice. Bump consecutive_fails directly and
+        # still pass through observe/verify for evidence continuity.
         if r.status == "error":
-            update["status"] = "verifying"  # let verifier decide if we reflect or abort
+            update["status"] = "verifying"
+            update["consecutive_fails"] = state.get("consecutive_fails", 0) + 1
+            update["last_tool_error"] = r.error
         else:
             update["status"] = "verifying"
         if action == "screenshot" and r.status == "ok":
@@ -210,30 +215,46 @@ def make_observe_node(deps: AgentDeps):
 
 def make_verify_node(deps: AgentDeps):
     async def verify(state: AgentState) -> dict:
-        tool_calls = state.get("tool_calls") or []
-        last = tool_calls[-1] if tool_calls else {"tool_name": "none"}
-        obs = state.get("observations") or []
-        last_snap = next(
-            (o["data"] for o in reversed(obs) if o.get("kind") == "snapshot"),
-            {},
-        )
-        messages = [
-            {"role": "system", "content": prompts.VERIFIER_SYSTEM},
-            {"role": "user", "content": prompts.verifier_user(last, last_snap)},
-        ]
-        out = await deps.navigator.complete(messages=messages)
-        try:
-            v = _parse_json(out["content"])
-            ok = bool(v.get("ok"))
-        except Exception:
-            # be forgiving — if verifier output is garbled, assume ok and advance
-            ok = True
+        # Tool-layer errors are already definitive. Skip the LLM call.
+        if state.get("last_tool_error"):
+            ok = False
+            _tool_error_reason = state.get("last_tool_error")
+        else:
+            _tool_error_reason = None
+            tool_calls = state.get("tool_calls") or []
+            last = tool_calls[-1] if tool_calls else {"tool_name": "none"}
+            obs = state.get("observations") or []
+            last_snap = next(
+                (o["data"] for o in reversed(obs) if o.get("kind") == "snapshot"),
+                {},
+            )
+            plan = state.get("plan") or []
+            idx = state.get("step_index", 0)
+            current_step = plan[idx] if idx < len(plan) else {}
+            messages = [
+                {"role": "system", "content": prompts.VERIFIER_SYSTEM},
+                {"role": "user", "content": prompts.verifier_user(
+                    task_prompt=state.get("task_prompt", ""),
+                    current_step=current_step,
+                    last_action=last,
+                    snapshot=last_snap,
+                )},
+            ]
+            out = await deps.navigator.complete(messages=messages)
+            try:
+                v = _parse_json(out["content"])
+                ok = bool(v.get("ok"))
+            except Exception:
+                # SAFETY: garbled verifier output is NOT a pass signal.
+                # Treat as not-ok and let the reflection budget handle it.
+                ok = False
         idx = state.get("step_index", 0)
         if ok:
             return {
                 "step_index": idx + 1,
                 "status": "acting",
                 "consecutive_fails": 0,
+                "last_tool_error": None,
             }
         # Failed step: decide among reflect, replan, or fail.
         rc = state.get("reflect_count", 0)

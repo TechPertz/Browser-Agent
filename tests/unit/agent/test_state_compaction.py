@@ -1,3 +1,11 @@
+"""Observation compaction preserves extract entries verbatim.
+
+This is an accuracy-critical invariant: list_iter flows accumulate
+extracted per-item data via `kind=="extract"` entries, and the
+extractor node reads them directly. Abstracting these into 1-line
+summaries silently dropped per-item data on long iterations.
+"""
+
 from andera.agent.state import OBSERVATION_WINDOW, compact_observations
 
 
@@ -11,29 +19,53 @@ def test_at_window_unchanged():
     assert compact_observations(obs) == obs
 
 
-def test_over_window_compacts_head():
+def test_over_window_compacts_older_snapshots():
     obs = [{"kind": "snapshot", "data": {"url": str(i), "title": f"p{i}"}} for i in range(10)]
     compacted = compact_observations(obs)
     assert len(compacted) == 5 + OBSERVATION_WINDOW
-    # first 5 become abstracts
-    for a in compacted[:5]:
-        assert a["kind"].endswith(".abstract")
-        assert "summary" in a
-    # last WINDOW preserved intact
-    for orig, kept in zip(obs[-OBSERVATION_WINDOW:], compacted[-OBSERVATION_WINDOW:]):
-        assert kept == orig
+    abstracts = [c for c in compacted if c["kind"].endswith(".abstract")]
+    assert len(abstracts) == 5
+    # last WINDOW snapshots preserved intact
+    tail = [c for c in compacted if c["kind"] == "snapshot"]
+    assert tail == obs[-OBSERVATION_WINDOW:]
 
 
-def test_extract_abstract_lists_fields():
+def test_extract_observations_never_compacted():
+    """Critical: a long run with many extract entries must preserve each one.
+
+    Fixes a silent data-loss bug where list_iter specialists (iterating
+    a list of items) accumulated per-item extracts but had all but the
+    last 5 replaced with 1-line summaries before the extractor node
+    aggregated them.
+    """
+    extracts = [
+        {"kind": "extract", "data": {"row": i, "title": f"item-{i}"}}
+        for i in range(12)
+    ]
+    snapshots = [
+        {"kind": "snapshot", "data": {"url": f"/x/{i}"}} for i in range(12)
+    ]
+    # Interleave extract + snapshot, then compact.
+    interleaved: list[dict] = []
+    for a, b in zip(extracts, snapshots):
+        interleaved.append(a)
+        interleaved.append(b)
+    compacted = compact_observations(interleaved)
+    # Every extract entry must be present verbatim.
+    kept_extracts = [c for c in compacted if c.get("kind") == "extract"]
+    assert len(kept_extracts) == len(extracts)
+    for orig in extracts:
+        assert orig in kept_extracts
+
+
+def test_extract_preserved_even_when_snapshots_exceed_window():
     obs = (
-        [{"kind": "snapshot", "data": {"url": "/x"}} for _ in range(OBSERVATION_WINDOW)]
-        + [{"kind": "extract", "data": {"title": "t", "author": "a", "state": "open"}}]
+        [{"kind": "extract", "data": {"row": i}} for i in range(3)]
+        + [{"kind": "snapshot", "data": {"url": f"/p/{i}"}} for i in range(20)]
     )
-    # extract is newest; shouldn't be compacted. Push more in so it IS compacted:
-    obs = obs + [{"kind": "snapshot", "data": {"url": "/y"}} for _ in range(OBSERVATION_WINDOW)]
     compacted = compact_observations(obs)
-    first_extract_abstract = next(
-        (a for a in compacted if a.get("kind") == "extract.abstract"), None
-    )
-    assert first_extract_abstract is not None
-    assert "fields=" in first_extract_abstract["summary"]
+    # All 3 extracts survive
+    assert sum(1 for c in compacted if c.get("kind") == "extract") == 3
+    # Only last OBSERVATION_WINDOW snapshots survive; older are abstracted
+    assert sum(1 for c in compacted if c.get("kind") == "snapshot") == OBSERVATION_WINDOW
+    assert sum(1 for c in compacted if c.get("kind") == "snapshot.abstract") == 20 - OBSERVATION_WINDOW

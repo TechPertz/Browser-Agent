@@ -18,17 +18,18 @@ def _append(left: list, right: list) -> list:
 
 
 def compact_observations(observations: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Keep the last OBSERVATION_WINDOW entries intact; summarize older ones.
-
-    Older observations are replaced with a 1-line abstract so total
-    context size stays bounded on long flows. Summarization is
-    deliberately cheap (no LLM call) — we capture kind + url/title/
-    action so the verifier has a breadcrumb trail.
+    """Keep the last OBSERVATION_WINDOW snapshot entries intact; summarize
+    older snapshots. Extract observations are ALWAYS preserved verbatim —
+    the extractor node reads them directly, so compacting them silently
+    would drop per-item data on long list_iter flows and produce nulls.
     """
-    if len(observations) <= OBSERVATION_WINDOW:
-        return observations
-    head = observations[: -OBSERVATION_WINDOW]
-    tail = observations[-OBSERVATION_WINDOW:]
+    # Split extracts (keep all) from snapshots/other (window-bounded).
+    extracts = [o for o in observations if o.get("kind") == "extract"]
+    others = [o for o in observations if o.get("kind") != "extract"]
+    if len(others) <= OBSERVATION_WINDOW:
+        return extracts + others  # extracts first so they're easy to find
+    head = others[: -OBSERVATION_WINDOW]
+    tail = others[-OBSERVATION_WINDOW:]
     abstracts: list[dict[str, Any]] = []
     for obs in head:
         kind = obs.get("kind", "obs")
@@ -37,7 +38,7 @@ def compact_observations(observations: list[dict[str, Any]]) -> list[dict[str, A
             "kind": f"{kind}.abstract",
             "summary": _one_line(kind, data),
         })
-    return abstracts + tail
+    return extracts + abstracts + tail
 
 
 def _one_line(kind: str, data: dict[str, Any]) -> str:
@@ -85,6 +86,7 @@ class AgentState(TypedDict, total=False):
     consecutive_fails: int            # verify-failures on the same step
     plan_cache_hit: bool              # telemetry
     task_type: str                    # set by classifier in Phase 2.75
+    last_tool_error: str              # set when act's tool call errored; verify reads it
 
     # --- control + result ---
     status: Status

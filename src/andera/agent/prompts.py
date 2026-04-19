@@ -37,12 +37,22 @@ Actions: goto | click | type | screenshot | extract | done.
 Be conservative: if unsure, issue a screenshot before the uncertain step."""
 
 
-VERIFIER_SYSTEM = """You are the Verifier. Given the last action taken and the
-resulting page snapshot, decide if the action succeeded in moving us toward the
-goal. Respond with ONE JSON object:
-  {"ok": true|false, "reason": "<one sentence>"}.
+VERIFIER_SYSTEM = """You are the Verifier. You receive:
+  - the overall task goal
+  - the current plan step and its rationale
+  - the last action tool call + its result
+  - a snapshot of the page AFTER the action
 
-'ok' is true only when the visible page clearly reflects the intended effect."""
+Decide if the action succeeded in advancing the step toward the task goal.
+Respond with ONE JSON object:
+  {"ok": true|false, "reason": "<cite specific snapshot text supporting the verdict>"}.
+
+Rules:
+  - 'ok' is true ONLY when the snapshot visibly reflects the intended effect.
+  - If the action was 'click' or 'type' and the snapshot is identical to the
+    pre-action state, return ok=false.
+  - If the snapshot shows an error banner, 404, or sign-in wall, return ok=false.
+  - If you cannot tell, return ok=false. Never guess true."""
 
 
 EXTRACTOR_SYSTEM = """You are the Extractor. Given the full set of collected
@@ -79,8 +89,15 @@ def navigator_user(remaining: list[dict[str, Any]], snapshot: dict[str, Any]) ->
     )
 
 
-def verifier_user(last_action: dict[str, Any], snapshot: dict[str, Any]) -> str:
+def verifier_user(
+    task_prompt: str,
+    current_step: dict[str, Any],
+    last_action: dict[str, Any],
+    snapshot: dict[str, Any],
+) -> str:
     return (
+        f"Task goal:\n{task_prompt.strip()}\n\n"
+        f"Current plan step:\n{json.dumps(current_step, ensure_ascii=False)}\n\n"
         f"Last action:\n{json.dumps(last_action, ensure_ascii=False)}\n\n"
         f"Resulting snapshot:\n{json.dumps(snapshot, ensure_ascii=False)[:3000]}"
     )
