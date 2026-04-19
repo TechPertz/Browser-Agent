@@ -46,6 +46,9 @@ class BrowserConfig(BaseModel):
 class QueueConfig(BaseModel):
     backend: Literal["sqlite", "redis", "nats"] = "sqlite"
     path: str = "./data/queue.db"
+    redis_url: str = "redis://localhost:6379/0"
+    redis_prefix: str | None = None     # default: andera:queue:<run_id>
+    max_attempts: int = Field(default=3, ge=1, le=20)
 
 
 class ArtifactsConfig(BaseModel):

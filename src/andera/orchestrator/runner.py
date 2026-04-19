@@ -114,9 +114,17 @@ class RunWorkflow:
         self.store = FilesystemArtifactStore(self.run_root)
         self.pool = _pool_for(profile, self.store)
         self.plan_cache = PlanCache()
-        # Import late so tests can substitute via monkeypatch.
-        from andera.queue import SqliteQueue
-        self.queue = SqliteQueue(Path("data") / f"{self.run_id}.queue.db")
+        # Queue backend is profile-driven. SQLite on a laptop, Redis across
+        # worker pods. Same TaskQueue Protocol either way.
+        from andera.queue import make_queue
+        self.queue = make_queue(
+            backend=profile.queue.backend,
+            run_id=self.run_id,
+            sqlite_path=Path("data") / f"{self.run_id}.queue.db",
+            redis_url=profile.queue.redis_url,
+            redis_prefix=profile.queue.redis_prefix,
+            max_attempts=profile.queue.max_attempts,
+        )
         self.audit = AuditLog(Path("data") / f"{self.run_id}.audit.db")
 
         # Memory-bounded counters instead of full result list.
