@@ -75,6 +75,28 @@ def run(
 
 
 @app.command()
+def worker(
+    run_id: str = typer.Argument(..., help="Run id the coordinator already started."),
+    worker_id: str | None = typer.Option(None, "--worker-id", help="Stable name; default is a uuid."),
+    profile_path: Path | None = typer.Option(None, "--profile", help="Alt profile.yaml path."),
+) -> None:
+    """Consume samples from the shared queue.
+
+    Run one of these per worker pod. Requires `profile.queue.backend=redis`
+    (or another shared backend) for multi-box scaling. With sqlite, it
+    still works on the same filesystem. Coordinator finalizes the run
+    once the queue drains.
+    """
+    load_dotenv()
+    from andera.worker import run_worker
+
+    processed = asyncio.run(
+        run_worker(run_id, profile_path=profile_path, worker_id=worker_id)
+    )
+    typer.echo(json.dumps({"run_id": run_id, "processed": processed}))
+
+
+@app.command()
 def resume(
     run_id: str = typer.Argument(..., help="Existing run id under runs/."),
     profile_path: Path | None = typer.Option(None, "--profile", help="Alt profile.yaml path."),
