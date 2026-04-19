@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{% block title %}Andera{% endblock %}</title>
+  <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+  <script src="https://unpkg.com/htmx-ext-ws@2.0.1"></script>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --fg: #e6e8ee;
+      --dim: #7c8496;
+      --accent: #7dd3fc;
+      --pass: #22c55e;
+      --fail: #ef4444;
+      --card: #181b22;
+      --border: #2a2f3a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+      background: var(--bg);
+      color: var(--fg);
+      font-size: 13px;
+    }
+    header {
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    nav a {
+      color: var(--dim);
+      text-decoration: none;
+      margin-right: 12px;
+    }
+    nav a:hover, nav a.active { color: var(--accent); }
+    main { padding: 24px; max-width: 1280px; margin: 0 auto; }
+    h2 { font-size: 15px; font-weight: 600; margin: 0 0 16px 0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    th { color: var(--dim); font-weight: 500; font-size: 11px; text-transform: uppercase; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+    }
+    .verdict-pass { color: var(--pass); }
+    .verdict-fail { color: var(--fail); }
+    .verdict-uncertain { color: #eab308; }
+    .status-running { color: var(--accent); }
+    .status-completed { color: var(--pass); }
+    .status-failed { color: var(--fail); }
+    .status-queued { color: var(--dim); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+    }
+    .sample {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+    }
+    .sample:hover { border-color: var(--accent); }
+    .sample .id { color: var(--dim); font-size: 11px; }
+    .sample .verdict { margin-top: 6px; font-weight: 600; }
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--border);
+      font-size: 11px;
+    }
+    button, .btn {
+      background: var(--accent);
+      color: var(--bg);
+      border: 0;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    button:hover { filter: brightness(1.1); }
+    input, textarea {
+      background: var(--bg);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px 12px;
+      font-family: inherit;
+      font-size: 13px;
+      width: 100%;
+    }
+    label { display: block; color: var(--dim); margin-top: 12px; margin-bottom: 4px; }
+    pre {
+      background: var(--bg);
+      padding: 12px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .empty { color: var(--dim); padding: 32px 0; text-align: center; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .stream img { width: 100%; border-radius: 4px; border: 1px solid var(--border); }
+    .screen-off { color: var(--dim); padding: 48px 0; text-align: center; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header>
+    <h1>Andera</h1>
+    <nav>
+      <a href="/ui/runs" class="{% if active=='runs' %}active{% endif %}">Runs</a>
+      <a href="/ui/runs/new" class="{% if active=='new' %}active{% endif %}">New run</a>
+      <a href="/ui/connections" class="{% if active=='connections' %}active{% endif %}">Connections</a>
+    </nav>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

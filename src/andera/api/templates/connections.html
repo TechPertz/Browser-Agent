@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% set active = "connections" %}
+{% block title %}Connections · Andera{% endblock %}
+{% block content %}
+<h2>Connections</h2>
+<p style="color: var(--dim);">
+  Hosts whose browser login state is sealed on this machine. These are used
+  automatically when a task requires authenticated access.
+</p>
+
+{% if hosts %}
+<div class="card" style="max-width: 480px;">
+  <ul style="list-style: none; padding: 0; margin: 0;">
+    {% for h in hosts %}
+      <li style="padding: 8px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between;">
+        <span><strong>{{ h }}</strong></span>
+        <span class="pill verdict-pass">sealed</span>
+      </li>
+    {% endfor %}
+  </ul>
+</div>
+{% else %}
+<div class="empty">No sealed sessions yet.</div>
+{% endif %}
+
+<div class="card" style="margin-top: 24px; max-width: 640px;">
+  <h2>Add a connection</h2>
+  <p style="color: var(--dim);">
+    Seal a new host from the CLI. The browser opens headed; complete the login;
+    press ENTER to save.
+  </p>
+  <pre>uv run andera login github --url https://github.com/login</pre>
+</div>
+{% endblock %}

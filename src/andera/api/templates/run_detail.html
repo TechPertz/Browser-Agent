@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% set active = "runs" %}
+{% block title %}{{ run.run_id }} · Andera{% endblock %}
+{% block content %}
+<h2>
+  Run <span style="color: var(--dim);">{{ run.run_id }}</span>
+  <span class="pill status-{{ run.status }}" style="margin-left: 8px;">{{ run.status }}</span>
+</h2>
+
+<div class="card" style="margin-bottom: 24px;">
+  <div style="display: flex; gap: 32px; align-items: center;">
+    <div><span style="color: var(--dim);">Task:</span> {{ run.task_id or "—" }}</div>
+    <div><span style="color: var(--dim);">Total:</span> {{ run.total }}</div>
+    <div><span style="color: var(--dim);">Passed:</span> <span class="verdict-pass">{{ run.passed }}</span></div>
+    <div><span style="color: var(--dim);">Failed:</span> <span class="verdict-fail">{{ run.failed }}</span></div>
+  </div>
+</div>
+
+<h2>Samples</h2>
+<div id="samples-grid"
+     hx-get="/ui/runs/{{ run.run_id }}/samples/fragment"
+     hx-trigger="load, every 2s"
+     hx-swap="innerHTML">
+  {% include "samples_fragment.html" %}
+</div>
+
+<h2 style="margin-top: 32px;">Live events</h2>
+<pre id="event-stream" style="max-height: 240px; overflow-y: auto;"></pre>
+<script>
+  (function () {
+    const pre = document.getElementById("event-stream");
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(`${proto}//${location.host}/api/events?run_id={{ run.run_id }}`);
+    ws.onmessage = (m) => {
+      const line = m.data;
+      const div = document.createElement("div");
+      div.textContent = line;
+      pre.insertBefore(div, pre.firstChild);
+      if (pre.childNodes.length > 100) pre.removeChild(pre.lastChild);
+    };
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% if samples %}
+<div class="grid">
+  {% for s in samples %}
+    <a class="sample" href="/ui/runs/{{ run.run_id }}/samples/{{ s.sample_id }}">
+      <div class="id">#{{ s.row_index }} · {{ s.sample_id }}</div>
+      <div class="verdict verdict-{{ s.verdict or 'uncertain' }}">
+        {{ s.verdict or s.status or "pending" }}
+      </div>
+      <div style="color: var(--dim); font-size: 11px; margin-top: 4px;">
+        evidence: {{ s.evidence_count or 0 }}
+      </div>
+    </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">Samples will appear here as the run makes progress…</div>
+{% endif %}

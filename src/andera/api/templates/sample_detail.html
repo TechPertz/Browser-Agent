@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% set active = "runs" %}
+{% block title %}{{ sample.sample_id }} · Andera{% endblock %}
+{% block content %}
+<h2>
+  <a href="/ui/runs/{{ run_id }}" style="color: var(--dim);">← {{ run_id }}</a>
+  / {{ sample.sample_id }}
+  <span class="pill verdict-{{ sample.verdict or 'uncertain' }}" style="margin-left: 8px;">
+    {{ sample.verdict or sample.status or "pending" }}
+  </span>
+</h2>
+
+<div class="split">
+  <div>
+    <h2>Evidence</h2>
+    {% if artifacts %}
+      {% for art in artifacts %}
+        <div class="card" style="margin-bottom: 12px;">
+          <div style="color: var(--dim); font-size: 11px; margin-bottom: 6px;">
+            {{ art.name }} · {{ art.size }} bytes · sha {{ art.sha256[:12] }}…
+          </div>
+          {% if art.name.endswith('.png') or art.name.endswith('.jpg') or art.name.endswith('.jpeg') %}
+            <img src="/api/evidence/{{ art.sha256 }}" style="max-width: 100%; border-radius: 4px; border: 1px solid var(--border);" />
+          {% else %}
+            <a class="pill" href="/api/evidence/{{ art.sha256 }}">download →</a>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">No evidence recorded for this sample.</div>
+    {% endif %}
+  </div>
+
+  <div>
+    <h2>Extracted</h2>
+    <div class="card">
+      <pre>{{ extracted_json }}</pre>
+    </div>
+
+    <h2 style="margin-top: 32px;">Verdict</h2>
+    <div class="card">
+      <div><strong class="verdict-{{ sample.verdict or 'uncertain' }}">{{ sample.verdict or "—" }}</strong></div>
+      <div style="color: var(--dim); margin-top: 8px;">{{ sample.verdict_reason or "" }}</div>
+      {% if sample.error %}
+        <div class="verdict-fail" style="margin-top: 8px;">error: {{ sample.error }}</div>
+      {% endif %}
+    </div>
+
+    <h2 style="margin-top: 32px;">Live browser</h2>
+    <div class="card stream">
+      <div id="screen">
+        <div class="screen-off">Screencast not connected. The browser must be actively running this sample.</div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        const el = document.getElementById("screen");
+        const proto = location.protocol === "https:" ? "wss:" : "ws:";
+        const ws = new WebSocket(`${proto}//${location.host}/api/screencast?sample_id={{ sample.sample_id }}`);
+        ws.onopen = () => {
+          el.innerHTML = '<div class="screen-off">Waiting for frames…</div>';
+        };
+        ws.onmessage = (m) => {
+          el.innerHTML = `<img src="data:image/jpeg;base64,${m.data}" />`;
+        };
+        ws.onclose = () => {
+          el.innerHTML = '<div class="screen-off">Screencast ended.</div>';
+        };
+      })();
+    </script>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% set active = "runs" %}
+{% block title %}Runs · Andera{% endblock %}
+{% block content %}
+<h2>Runs
+  <a class="btn" href="/ui/runs/new" style="float:right;">+ New</a>
+</h2>
+<div hx-get="/ui/runs/fragment" hx-trigger="load, every 3s" hx-swap="innerHTML">
+  {% include "runs_fragment.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% if runs %}
+<table>
+  <thead>
+    <tr><th>Run</th><th>Task</th><th>Status</th><th>Total</th><th>Pass</th><th>Fail</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for r in runs %}
+    <tr>
+      <td><a href="/ui/runs/{{ r.run_id }}" style="color: var(--accent); text-decoration: none;">{{ r.run_id }}</a></td>
+      <td>{{ r.task_id or "—" }}</td>
+      <td class="status-{{ r.status }}">{{ r.status }}</td>
+      <td>{{ r.total }}</td>
+      <td class="verdict-pass">{{ r.passed }}</td>
+      <td class="verdict-fail">{{ r.failed }}</td>
+      <td><a href="/ui/runs/{{ r.run_id }}" class="pill">open →</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">No runs yet. <a href="/ui/runs/new" style="color: var(--accent);">Start one →</a></div>
+{% endif %}
