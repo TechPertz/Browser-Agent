@@ -125,6 +125,31 @@ def worker(
 
 
 @app.command()
+def migrate(
+    profile_path: Path | None = typer.Option(None, "--profile", help="Alt profile.yaml path."),
+    postgres_url: str | None = typer.Option(
+        None, "--postgres-url",
+        help="Override profile; useful when running against a fresh DB.",
+    ),
+) -> None:
+    """Apply Postgres schema (idempotent).
+
+    Creates the `audit_log` table and LangGraph checkpoint tables.
+    Safe to run repeatedly — all DDL is `IF NOT EXISTS`. The API
+    lifespan calls this automatically at boot when
+    `storage.metadata.backend=postgres`.
+    """
+    load_dotenv()
+    from andera.storage.pg_migrate import migrate as _migrate
+
+    profile = load_profile(profile_path)
+    dsn = postgres_url or profile.storage.metadata.postgres_url
+    result = asyncio.run(_migrate(dsn))
+    typer.echo(json.dumps({"postgres_url": dsn, "tables": result}, indent=2))
+    raise typer.Exit(0 if all(v == "ok" for v in result.values()) else 1)
+
+
+@app.command()
 def resume(
     run_id: str = typer.Argument(..., help="Existing run id under runs/."),
     profile_path: Path | None = typer.Option(None, "--profile", help="Alt profile.yaml path."),

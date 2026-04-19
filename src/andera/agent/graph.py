@@ -83,14 +83,18 @@ async def run_sample(
     thread_id: str | None = None,
     recursion_limit: int = 40,
     compiled_graph: Any = None,
+    postgres_url: str | None = None,
 ) -> dict[str, Any]:
     """Execute one sample end-to-end. Returns final state.
+
+    Checkpointer picks:
+      - `postgres_url` → `AsyncPostgresSaver` (one shared table across runs).
+      - else → `AsyncSqliteSaver` (per-run .ckpt.db file, legacy dev path).
 
     Compatibility shim: legacy callers (tests, scripts) can invoke
     without a precompiled graph; the orchestrator prefers
     `invoke_compiled` below so the graph isn't rebuilt per sample.
     """
-    Path(checkpoint_db).parent.mkdir(parents=True, exist_ok=True)
     if compiled_graph is not None:
         config = {
             "configurable": {
@@ -100,6 +104,20 @@ async def run_sample(
         }
         return await compiled_graph.ainvoke(initial_state, config=config)
 
+    if postgres_url:
+        # Production-shape checkpointer. Shared across runs + agents.
+        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+        async with AsyncPostgresSaver.from_conn_string(postgres_url) as saver:
+            graph = build_graph(deps).compile(checkpointer=saver)
+            config = {
+                "configurable": {
+                    "thread_id": thread_id or initial_state.get("sample_id", "t"),
+                },
+                "recursion_limit": recursion_limit,
+            }
+            return await graph.ainvoke(initial_state, config=config)
+
+    Path(checkpoint_db).parent.mkdir(parents=True, exist_ok=True)
     async with AsyncSqliteSaver.from_conn_string(str(checkpoint_db)) as saver:
         graph = build_graph(deps).compile(checkpointer=saver)
         config = {

@@ -237,11 +237,14 @@ async def _execute_sample(
             "extract_schema": task.get("extract_schema") or {},
             "status": "pending",
         }
+        pg_url = (profile.storage.metadata.postgres_url
+                  if profile.storage.metadata.backend == "postgres" else None)
         final = await run_sample(
             deps=deps,
             initial_state=initial,
             checkpoint_db=Path("data") / f"{run_id}.ckpt.db",
             thread_id=sample_id,
+            postgres_url=pg_url,
         )
     result = {
         "sample_id": sample_id,

@@ -31,6 +31,10 @@ dev = [
 redis = [
     "redis>=5.0",
 ]
+postgres = [
+    "asyncpg>=0.29",
+    "langgraph-checkpoint-postgres>=2.0",
+]
 
 [project.scripts]
 andera = "andera.cli:main"
