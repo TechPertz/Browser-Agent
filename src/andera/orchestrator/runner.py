@@ -34,6 +34,7 @@ from andera.agent.nodes import AgentDeps
 from andera.agent.plan_cache import PlanCache
 from andera.browser import BrowserPool
 from andera.config import Profile
+from andera.credentials import SealedStateStore, host_of, looks_logged_out
 from andera.models import Role, get_model
 from andera.observability import get_trace_sink, install_langfuse_if_enabled
 from andera.storage import AuditLog, FilesystemArtifactStore, write_manifest
@@ -114,6 +115,11 @@ class RunWorkflow:
         self.store = FilesystemArtifactStore(self.run_root)
         self.pool = _pool_for(profile, self.store)
         self.plan_cache = PlanCache()
+        # Sealed Playwright storage_state store. Loaded per-sample by host
+        # so each sample starts pre-authenticated on sites the operator
+        # has run `andera login <host>` against. Missing blobs are fine —
+        # public pages still work without one.
+        self.creds = SealedStateStore()
         # Queue backend is profile-driven. SQLite on a laptop, Redis across
         # worker pods. Same TaskQueue Protocol either way.
         from andera.queue import make_queue
@@ -192,15 +198,33 @@ class RunWorkflow:
 
     async def _run_one(self, job: dict[str, Any]) -> dict[str, Any]:
         sample_id = job["sample_id"]
+        start_url = job.get("start_url")
+        host = host_of(start_url)
+        # Load sealed storage_state if the operator has run
+        # `andera login <host>` previously. Missing blob or missing
+        # master key -> proceed unauthenticated; the preflight check
+        # below will fail the sample cleanly if the site requires auth.
+        storage_state: dict[str, Any] | None = None
+        if host and self.creds.has(host):
+            try:
+                storage_state = self.creds.load(host)
+            except Exception:
+                storage_state = None
         self.audit.append(
             kind="sample.started", run_id=self.run_id, sample_id=sample_id,
-            payload={"row_index": job.get("row_index")},
+            payload={
+                "row_index": job.get("row_index"),
+                "host": host,
+                "preauthed": storage_state is not None,
+            },
         )
         cast = None
         if self.profile.browser.screencast:
             from andera.api.ws import get_bus
             from andera.browser import Screencaster
-        async with self.pool.acquire(sample_id=sample_id, run_id=self.run_id) as session:
+        async with self.pool.acquire(
+            sample_id=sample_id, run_id=self.run_id, storage_state=storage_state,
+        ) as session:
             if self.profile.browser.screencast:
                 page = getattr(session, "_page", None)
                 if page is not None:
@@ -213,6 +237,47 @@ class RunWorkflow:
                     except Exception:
                         cast = None
             deps = _build_deps(self.profile, BrowserTools(session), self.plan_cache)
+            # Preflight: hit start_url once before the planner spends an LLM
+            # call. If the site redirects to a login wall, fail the sample
+            # immediately with an actionable message. No LLM tokens wasted.
+            if start_url:
+                try:
+                    await session.goto(start_url)
+                    snap = await session.snapshot()
+                    landed = snap.get("url") or start_url
+                    if looks_logged_out(landed) and host is not None:
+                        suggestion = (
+                            f"auth required for {host}: "
+                            f"run `andera login {host} --url <login-url>` and retry"
+                        )
+                        if storage_state is not None:
+                            suggestion += " (saved session appears expired)"
+                        if cast is not None:
+                            try:
+                                await cast.stop()
+                            except Exception:
+                                pass
+                        self.audit.append(
+                            kind="sample.failed", run_id=self.run_id,
+                            sample_id=sample_id,
+                            payload={"reason": "auth_required", "host": host,
+                                     "landed": landed},
+                        )
+                        return {
+                            "sample_id": sample_id,
+                            "row_index": job.get("row_index"),
+                            "verdict": "fail",
+                            "verdict_reason": suggestion,
+                            "extracted": {},
+                            "evidence": [],
+                            "evidence_count": 0,
+                            "status": "failed",
+                            "error": suggestion,
+                        }
+                except Exception:
+                    # Any preflight error -> let the agent loop try anyway
+                    # (transient network blips shouldn't fail the sample here).
+                    pass
             initial = {
                 "run_id": self.run_id,
                 "sample_id": sample_id,
@@ -283,6 +348,10 @@ class RunWorkflow:
                     await self.queue.nack(item_id, res.get("error") or "no verdict")
             except Exception as e:
                 err = f"{type(e).__name__}: {e}"
+                # Surface the traceback. Silently nacking a raised sample
+                # means 1000 samples × 3 retries × opaque errors — we lose
+                # the one line that would let an operator diagnose the run.
+                traceback.print_exc()
                 await self.queue.nack(item_id, err)
 
     def _install_signal_handlers(self) -> None:

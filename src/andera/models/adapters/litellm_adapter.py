@@ -49,12 +49,15 @@ class LiteLLMChatModel:
         params: dict[str, Any] = {
             "model": self._model_string,
             "messages": messages,
-            "temperature": kwargs.pop("temperature", self._default_temperature),
             # LiteLLM handles retry+backoff natively; these cover 429 and
             # transient timeout failures without cluttering the node code.
             "num_retries": self._num_retries,
             "timeout": self._request_timeout,
         }
+        # `temperature` is deprecated on newer Anthropic models (Opus 4.7,
+        # Sonnet 4.6). Only pass it when the caller explicitly asks.
+        if "temperature" in kwargs:
+            params["temperature"] = kwargs.pop("temperature")
         if self._api_key is not None:
             params["api_key"] = self._api_key
         if schema is not None:

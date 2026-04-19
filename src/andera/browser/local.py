@@ -197,8 +197,8 @@ class LocalPlaywrightSession:
     async def type(self, selector: str, value: str) -> None:
         await self._page.fill(selector, value)
 
-    async def screenshot(self, name: str) -> Artifact:
-        data = await self._page.screenshot(full_page=True)
+    async def screenshot(self, name: str, *, full_page: bool = True) -> Artifact:
+        data = await self._page.screenshot(full_page=full_page)
         final_name = name if name.endswith(".png") else f"{name}.png"
         return await self._artifacts.put(
             data,
@@ -207,6 +207,90 @@ class LocalPlaywrightSession:
             sample_id=self._sample_id,
             run_id=self._run_id,
         )
+
+    async def scroll(self, amount: str | int) -> dict[str, Any]:
+        """Scroll the page. `amount` is 'down' | 'up' | 'top' | 'bottom' | int(px).
+
+        Returns {y, page_height, viewport_height, at_bottom} so the planner
+        / verifier can see whether scrolling actually changed position.
+        """
+        if amount == "top":
+            js = "window.scrollTo(0, 0);"
+        elif amount == "bottom":
+            js = "window.scrollTo(0, document.documentElement.scrollHeight);"
+        elif amount == "up":
+            js = "window.scrollBy(0, -window.innerHeight * 0.9);"
+        elif amount == "down":
+            js = "window.scrollBy(0, window.innerHeight * 0.9);"
+        else:
+            try:
+                px = int(amount)
+            except (TypeError, ValueError) as e:
+                raise ValueError(
+                    f"scroll amount must be 'up|down|top|bottom' or int px, got {amount!r}"
+                ) from e
+            js = f"window.scrollBy(0, {px});"
+        await self._page.evaluate(js)
+        # Small settle delay so lazy-load content renders before a snapshot.
+        await self._page.wait_for_timeout(250)
+        info = await self._page.evaluate(
+            "() => ({y: window.scrollY, ph: document.documentElement.scrollHeight, "
+            "vh: window.innerHeight})"
+        )
+        y, ph, vh = info["y"], info["ph"], info["vh"]
+        return {
+            "y": y, "page_height": ph, "viewport_height": vh,
+            "at_bottom": (y + vh) >= (ph - 4),
+        }
+
+    async def scroll_to(self, target: str) -> dict[str, Any]:
+        """Scroll an element into view. `target` is visible text OR a CSS/XPath
+        selector. Returns {found: bool, y: int}. Prefer semantic text — it's
+        what the planner naturally emits and works when selectors drift.
+        """
+        s = target.strip()
+        looks_like_selector = (
+            s.startswith(("#", ".", "/", "[", ":"))
+            or ">" in s or "//" in s
+        )
+        try:
+            if looks_like_selector:
+                loc = self._page.locator(s)
+            else:
+                loc = self._page.get_by_text(s, exact=False).first
+            await loc.scroll_into_view_if_needed(timeout=4000)
+            y = await self._page.evaluate("() => window.scrollY")
+            return {"found": True, "y": int(y), "target": target}
+        except Exception as e:
+            return {"found": False, "y": 0, "target": target, "error": str(e)}
+
+    async def screenshot_chunks(self, name: str) -> list[Artifact]:
+        """Deterministic full-page walk: scroll top → bottom in viewport
+        chunks, capture each, return ordered artifacts. The planner does
+        not track positions — chunk order preserves them.
+        """
+        await self._page.evaluate("window.scrollTo(0, 0);")
+        await self._page.wait_for_timeout(200)
+        dims = await self._page.evaluate(
+            "() => ({ph: document.documentElement.scrollHeight, vh: window.innerHeight})"
+        )
+        ph, vh = int(dims["ph"]), int(dims["vh"])
+        # Cap chunks to 12 to avoid run-away on pathological infinite-scroll pages.
+        # 12 × ~900 px viewport ≈ 10800 px of content captured.
+        n = min(12, max(1, (ph + vh - 1) // vh))
+        artifacts: list[Artifact] = []
+        base = name[:-4] if name.endswith(".png") else name
+        for i in range(n):
+            y = i * vh
+            await self._page.evaluate(f"window.scrollTo(0, {y});")
+            await self._page.wait_for_timeout(200)
+            png = await self._page.screenshot(full_page=False)
+            art = await self._artifacts.put(
+                png, f"{base}_chunk{i:02d}.png", mime="image/png",
+                sample_id=self._sample_id, run_id=self._run_id,
+            )
+            artifacts.append(art)
+        return artifacts
 
     async def extract(self, schema: dict[str, Any]) -> dict[str, Any]:
         """Phase 1 scaffold: returns the page title + URL.

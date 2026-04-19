@@ -30,6 +30,19 @@ class TypeArgs(BaseModel):
 
 class ScreenshotArgs(BaseModel):
     name: str
+    # viewport = what the user sees (small, default). full = whole scrollable
+    # document (big, evidence-grade). Planner picks based on task wording.
+    mode: str = "viewport"
+
+
+class ScrollArgs(BaseModel):
+    # 'up' | 'down' | 'top' | 'bottom' | stringified int px
+    amount: str = "down"
+
+
+class ScrollToArgs(BaseModel):
+    # visible text (preferred) OR css/xpath selector
+    target: str
 
 
 class ExtractArgs(BaseModel):
@@ -65,10 +78,36 @@ class BrowserTools:
 
     async def screenshot(self, args: ScreenshotArgs) -> ToolResult:
         async def run():
-            artifact = await self._session.screenshot(args.name)
-            return {"artifact": artifact.model_dump(mode="json")}
+            full = (args.mode == "full")
+            artifact = await self._session.screenshot(args.name, full_page=full)
+            return {"artifact": artifact.model_dump(mode="json"), "mode": args.mode}
 
         return await invoke("browser.screenshot", args.model_dump(), run)
+
+    async def scroll(self, args: ScrollArgs) -> ToolResult:
+        async def run():
+            return await self._session.scroll(args.amount)
+
+        return await invoke("browser.scroll", args.model_dump(), run)
+
+    async def scroll_to(self, args: ScrollToArgs) -> ToolResult:
+        async def run():
+            return await self._session.scroll_to(args.target)
+
+        return await invoke("browser.scroll_to", args.model_dump(), run)
+
+    async def screenshot_all(self, args: ScreenshotArgs) -> ToolResult:
+        """Walk the page top→bottom and capture viewport chunks. The
+        `mode` field on ScreenshotArgs is ignored — all chunks are
+        viewport-sized by construction. Returns artifacts[] + chunk count."""
+        async def run():
+            arts = await self._session.screenshot_chunks(args.name)
+            return {
+                "artifacts": [a.model_dump(mode="json") for a in arts],
+                "chunks": len(arts),
+            }
+
+        return await invoke("browser.screenshot_all", args.model_dump(), run)
 
     async def extract(self, args: ExtractArgs) -> ToolResult:
         async def run():

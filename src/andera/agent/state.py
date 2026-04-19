@@ -84,6 +84,7 @@ class AgentState(TypedDict, total=False):
     extracted: dict[str, Any]         # final extracted data
     reflect_count: int                # bounded retries (cap = 3)
     consecutive_fails: int            # verify-failures on the same step
+    plan_count: int                   # number of times plan node has run (cap = 3)
     plan_cache_hit: bool              # telemetry
     task_type: str                    # set by classifier in Phase 2.75
     last_tool_error: str              # set when act's tool call errored; verify reads it

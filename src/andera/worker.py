@@ -214,11 +214,62 @@ async def _execute_sample(
     (per-run mode) and run_agent_pool (run-agnostic). Everything it
     needs is passed in; no self-state access."""
     sample_id = job["sample_id"]
+    start_url = job.get("start_url")
+    from andera.credentials import SealedStateStore, host_of, looks_logged_out
+    host = host_of(start_url)
+    storage_state: dict[str, Any] | None = None
+    creds = SealedStateStore()
+    if host and creds.has(host):
+        try:
+            storage_state = creds.load(host)
+        except Exception:
+            storage_state = None
     audit.append(
         kind="sample.started", run_id=run_id, sample_id=sample_id,
-        payload={"row_index": job.get("row_index"), "worker": worker_id},
+        payload={
+            "row_index": job.get("row_index"), "worker": worker_id,
+            "host": host, "preauthed": storage_state is not None,
+        },
     )
-    async with pool.acquire(sample_id=sample_id, run_id=run_id) as session:
+    async with pool.acquire(
+        sample_id=sample_id, run_id=run_id, storage_state=storage_state,
+    ) as session:
+        if start_url:
+            try:
+                await session.goto(start_url)
+                snap = await session.snapshot()
+                landed = snap.get("url") or start_url
+                if looks_logged_out(landed) and host is not None:
+                    msg = (
+                        f"auth required for {host}: "
+                        f"run `andera login {host} --url <login-url>` and retry"
+                    )
+                    if storage_state is not None:
+                        msg += " (saved session appears expired)"
+                    result = {
+                        "sample_id": sample_id,
+                        "row_index": job.get("row_index"),
+                        "verdict": "fail",
+                        "verdict_reason": msg,
+                        "extracted": {},
+                        "evidence": [],
+                        "evidence_count": 0,
+                        "status": "failed",
+                        "error": msg,
+                        "worker_id": worker_id,
+                    }
+                    audit.append(
+                        kind="sample.failed", run_id=run_id, sample_id=sample_id,
+                        payload={"reason": "auth_required", "host": host,
+                                 "worker": worker_id},
+                    )
+                    async with write_lock:
+                        samples_jsonl_path.parent.mkdir(parents=True, exist_ok=True)
+                        with samples_jsonl_path.open("a") as f:
+                            f.write(json.dumps(result, default=str, ensure_ascii=False) + "\n")
+                    return result
+            except Exception:
+                pass
         deps = AgentDeps(
             planner=get_model(Role.PLANNER, profile),
             navigator=get_model(Role.NAVIGATOR, profile),

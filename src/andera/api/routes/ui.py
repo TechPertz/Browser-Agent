@@ -123,7 +123,14 @@ async def sample_detail_page(
                         extracted = s.get("extracted") or {}
                         break
                 # Artifacts not tied to sample in manifest yet; surface all.
-                artifacts = m.get("artifacts") or []
+                # Manifest stores {sha256, path, size}; template expects
+                # `.name` so derive it from the path basename.
+                raw_artifacts = m.get("artifacts") or []
+                for a in raw_artifacts:
+                    a = dict(a)
+                    if "name" not in a and a.get("path"):
+                        a["name"] = a["path"].rsplit("/", 1)[-1]
+                    artifacts.append(a)
             except Exception:
                 pass
 

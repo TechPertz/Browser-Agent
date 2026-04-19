@@ -19,6 +19,8 @@ from andera.tools.browser import (
     ExtractArgs,
     GotoArgs,
     ScreenshotArgs,
+    ScrollArgs,
+    ScrollToArgs,
     TypeArgs,
 )
 
@@ -32,6 +34,10 @@ REFLECT_MAX = 3
 # If the verifier disagrees this many times in a row, bail to re-plan
 # rather than chewing up reflection attempts on a dead plan.
 REPLAN_AFTER_CONSECUTIVE_FAILS = 2
+# Hard cap on plan attempts per sample. Without this, verify→replan→plan
+# resets reflect_count and the graph can loop until LangGraph's recursion
+# cap fires. 3 = one initial plan + two replans.
+PLAN_MAX = 3
 
 
 @dataclass
@@ -101,9 +107,19 @@ def make_plan_node(deps: AgentDeps):
         start_url = state.get("start_url")
         task_type = state.get("task_type") or "unknown"
 
+        plan_count = state.get("plan_count", 0) + 1
+        if plan_count > PLAN_MAX:
+            return {
+                "status": "failed",
+                "error": f"plan cap reached ({PLAN_MAX} attempts)",
+                "plan_count": plan_count,
+            }
+
         # Check cache — identical task+schema+url_pattern -> reuse plan.
+        # Only honored on the FIRST attempt; if the first plan failed, the
+        # cached plan is presumed broken for this sample and we re-plan.
         cache_key = plan_key(task_prompt, schema, start_url)
-        if deps.plan_cache is not None:
+        if plan_count == 1 and deps.plan_cache is not None:
             cached = deps.plan_cache.get(cache_key)
             if cached is not None:
                 return {
@@ -112,6 +128,7 @@ def make_plan_node(deps: AgentDeps):
                     "status": "acting",
                     "reflect_count": 0,
                     "consecutive_fails": 0,
+                    "plan_count": plan_count,
                     "plan_cache_hit": True,
                 }
 
@@ -148,6 +165,7 @@ def make_plan_node(deps: AgentDeps):
             "status": "acting",
             "reflect_count": 0,
             "consecutive_fails": 0,
+            "plan_count": plan_count,
             "plan_cache_hit": False,
         }
 
@@ -164,7 +182,17 @@ def make_act_node(deps: AgentDeps):
             return {"status": "extracting"}
         step = plan[idx]
         action = step.get("action")
-        target = step.get("target", "")
+        # Planners (Opus) naturally emit action-specific fields: url for
+        # goto, selector+text for click, name for screenshot. Accept those
+        # as first-class AND fall back to the unified `target` key.
+        target = (
+            step.get("target")
+            or step.get("url")
+            or step.get("selector")
+            or step.get("text")
+            or step.get("name")
+            or ""
+        )
         value = step.get("value", "")
 
         if action == "goto":
@@ -174,7 +202,18 @@ def make_act_node(deps: AgentDeps):
         elif action == "type":
             r = await deps.browser.type(TypeArgs(selector=target, value=value))
         elif action == "screenshot":
-            r = await deps.browser.screenshot(ScreenshotArgs(name=target or f"step_{idx:02d}"))
+            mode = step.get("mode") or "viewport"
+            r = await deps.browser.screenshot(
+                ScreenshotArgs(name=target or f"step_{idx:02d}", mode=mode),
+            )
+        elif action == "screenshot_all":
+            r = await deps.browser.screenshot_all(
+                ScreenshotArgs(name=target or f"step_{idx:02d}_all"),
+            )
+        elif action == "scroll":
+            r = await deps.browser.scroll(ScrollArgs(amount=(target or value or "down")))
+        elif action == "scroll_to":
+            r = await deps.browser.scroll_to(ScrollToArgs(target=target))
         elif action == "extract":
             r = await deps.browser.extract(ExtractArgs(json_schema=state.get("extract_schema") or {}))
         elif action == "done":
@@ -198,6 +237,10 @@ def make_act_node(deps: AgentDeps):
             art = r.data.get("artifact")
             if art:
                 update["evidence"] = [art]
+        if action == "screenshot_all" and r.status == "ok":
+            arts = r.data.get("artifacts") or []
+            if arts:
+                update["evidence"] = arts
         if action == "extract" and r.status == "ok":
             # observations is non-reducer now; append + compact explicitly.
             current = state.get("observations") or []
