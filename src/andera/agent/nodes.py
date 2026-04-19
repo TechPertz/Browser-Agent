@@ -350,12 +350,35 @@ def make_verify_node(deps: AgentDeps):
 EXTRACT_RETRY_MAX = 2  # total attempts = 1 + EXTRACT_RETRY_MAX
 
 
+def _is_array_schema(schema: dict[str, Any]) -> bool:
+    """True when the caller asked for N-items-per-sample (fan-out)."""
+    return schema.get("type") == "array" or "items" in schema
+
+
 def _schema_errors(parsed: Any, schema: dict[str, Any]) -> list[str]:
-    """Return human-readable schema validation errors, [] if valid."""
+    """Return human-readable schema validation errors, [] if valid.
+
+    For array schemas, walks each element against `schema.items` and
+    prefixes errors with `[i].` so the retry prompt can cite the bad
+    item precisely.
+    """
+    if _is_array_schema(schema):
+        item_schema = schema.get("items") or {}
+        if not isinstance(parsed, list):
+            return [f"expected array, got {type(parsed).__name__}"]
+        errs: list[str] = []
+        for i, item in enumerate(parsed):
+            for msg in _schema_errors_obj(item, item_schema):
+                errs.append(f"[{i}].{msg}")
+        return errs
+    return _schema_errors_obj(parsed, schema)
+
+
+def _schema_errors_obj(parsed: Any, schema: dict[str, Any]) -> list[str]:
+    """Single-object schema check (the original behavior)."""
     try:
         from jsonschema import Draft202012Validator
     except ImportError:
-        # jsonschema is a soft dep; if absent, fall back to required-key check.
         if not isinstance(parsed, dict):
             return [f"expected object, got {type(parsed).__name__}"]
         missing = set(schema.get("required") or []) - set(parsed.keys())
@@ -386,6 +409,7 @@ def make_extract_node(deps: AgentDeps):
         judge_feedback = state.get("judge_feedback")
         parsed: Any = None
         errors: list[str] = []
+        is_array = _is_array_schema(schema)
 
         # Retry loop: initial attempt + EXTRACT_RETRY_MAX re-asks on
         # schema-invalid output, each time showing the prior attempt
@@ -402,7 +426,12 @@ def make_extract_node(deps: AgentDeps):
                 {"role": "system", "content": prompts.EXTRACTOR_SYSTEM},
                 {"role": "user", "content": user_msg},
             ]
-            out = await deps.extractor.complete(messages=messages, schema=schema)
+            # Array schemas skip strict JSON-mode — many providers only
+            # allow top-level object for structured output. Prompt +
+            # _parse_json round-trip is robust enough; the schema walk
+            # below still enforces item structure on the retry loop.
+            pass_schema = None if is_array else schema
+            out = await deps.extractor.complete(messages=messages, schema=pass_schema)
             parsed = out.get("parsed")
             if parsed is None:
                 try:
@@ -410,12 +439,20 @@ def make_extract_node(deps: AgentDeps):
                 except Exception as e:
                     errors = [f"JSON parse: {e}"]
                     continue
+            # Unwrap `{items: [...]}` if the LLM produced a wrapped object
+            # despite being asked for a bare array — common Haiku pattern.
+            if is_array and isinstance(parsed, dict) and "items" in parsed and isinstance(parsed["items"], list):
+                parsed = parsed["items"]
             errors = _schema_errors(parsed, schema)
             if not errors:
                 break
 
+        # Default-empty on total failure: [] for arrays, {} for objects.
+        if parsed is None or (is_array and not isinstance(parsed, list)):
+            parsed = [] if is_array else {}
+
         return {
-            "extracted": parsed or {},
+            "extracted": parsed,
             "extract_errors": errors,
             "status": "judging",
             # Clear feedback so a re-entry from judge doesn't loop on stale text.

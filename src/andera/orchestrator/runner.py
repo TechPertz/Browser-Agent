@@ -528,6 +528,11 @@ class RunWorkflow:
             sid = row.get("sample_id")
             if not sid:
                 continue
+            # Preserve list vs dict shape for `extracted` — fan-out tasks
+            # emit [] or [{...}, ...], single-item tasks emit {...}.
+            extracted = row.get("extracted")
+            if not isinstance(extracted, (list, dict)):
+                extracted = {}
             seen[sid] = {
                 "sample_id": sid,
                 "row_index": row.get("row_index"),
@@ -535,35 +540,72 @@ class RunWorkflow:
                 "verdict_reason": row.get("verdict_reason"),
                 "status": row.get("status"),
                 "evidence_count": row.get("evidence_count"),
-                "extracted": row.get("extracted") or {},
+                "extracted": extracted,
                 "error": row.get("error"),
             }
         return sorted(seen.values(), key=lambda s: s.get("row_index") or 0)
 
     def _rebuild_csv_from_jsonl(self, path: Path) -> None:
-        """Emit aggregate CSV from the durable JSONL source of truth."""
+        """Emit aggregate CSV from the durable JSONL source of truth.
+
+        Supports both shapes of `extracted`:
+          - dict  -> one CSV row per sample (legacy / single-item tasks)
+          - list  -> one CSV row per item (fan-out tasks); adds item_index
+                     column, reuses sample_id across items
+
+        If ANY sample produced a list, the whole CSV gets the item_index
+        column so downstream consumers see a uniform shape.
+        """
         rows = self._samples_summary_from_jsonl()
         if not rows:
             path.write_text("")
             return
+
+        # First pass: collect keys across every item, detect fan-out.
         keys: list[str] = []
         seen: set[str] = set()
+        any_list = False
         for r in rows:
-            for k in (r.get("extracted") or {}).keys():
-                if k not in seen:
-                    seen.add(k)
-                    keys.append(k)
+            extracted = r.get("extracted")
+            if isinstance(extracted, list):
+                any_list = True
+                for item in extracted:
+                    for k in (item or {}).keys():
+                        if k not in seen:
+                            seen.add(k)
+                            keys.append(k)
+            elif isinstance(extracted, dict):
+                for k in extracted.keys():
+                    if k not in seen:
+                        seen.add(k)
+                        keys.append(k)
+
+        header = ["sample_id", "row_index"]
+        if any_list:
+            header.append("item_index")
+        header.append("verdict")
+        header.extend(keys)
+
         with path.open("w", newline="") as f:
             w = csv.writer(f)
-            w.writerow(["sample_id", "row_index", "verdict", *keys])
+            w.writerow(header)
             for r in rows:
-                extracted = r.get("extracted") or {}
-                w.writerow([
-                    r.get("sample_id"),
-                    r.get("row_index"),
-                    r.get("verdict"),
-                    *[extracted.get(k, "") for k in keys],
-                ])
+                extracted = r.get("extracted")
+                # Normalize to a list of items so the writer is single-path.
+                if isinstance(extracted, list):
+                    items = extracted if extracted else [{}]
+                elif isinstance(extracted, dict):
+                    items = [extracted]
+                else:
+                    items = [{}]
+                for i, item in enumerate(items):
+                    item = item or {}
+                    row_out: list[Any] = [r.get("sample_id"), r.get("row_index")]
+                    if any_list:
+                        row_out.append(i)
+                    row_out.append(r.get("verdict"))
+                    row_out.extend(item.get(k, "") for k in keys)
+                    w.writerow(row_out)
 
 
 def _apply_task_overrides(profile: Profile, task: dict[str, Any]) -> Profile:

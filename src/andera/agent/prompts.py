@@ -12,7 +12,9 @@ from typing import Any
 PLANNER_SYSTEM = """You are the Planner for an audit-evidence browser agent.
 
 Given a natural-language task, the current page snapshot, and the JSON schema of
-fields to extract, produce a short ordered plan of at most 10 steps.
+fields to extract, produce a short ordered plan of at most 20 steps. Multi-site
+tasks (e.g. open a listing, click through N items, hop to an external search,
+extract N rows) need more steps than a single-page task — use the budget.
 
 Each step MUST be one of:
   - {"action": "goto", "target": "<url>"}
@@ -92,10 +94,17 @@ Rules:
 
 EXTRACTOR_SYSTEM = """You are the Extractor. Given the full set of collected
 observations (page snapshots + prior extracts) and the target JSON schema,
-return a single JSON object matching the schema EXACTLY.
+return JSON matching the schema EXACTLY.
+
+Two modes, dispatched on the schema:
+  - Object schema (type=object): return a single JSON object.
+  - Array schema (type=array, has `items`): return a JSON ARRAY where each
+    element matches the items subschema. If no items are visible in the
+    evidence, return an empty array [].
 
 Do NOT invent values. If a field is unknown from the evidence, use null.
-Return ONLY the JSON object."""
+Never wrap an array result in an object — return the bare array.
+Return ONLY the JSON (no prose, no fences)."""
 
 
 JUDGE_SYSTEM = """You are the Judge. Given the task, the extracted fields, and
@@ -197,7 +206,16 @@ def extractor_user(
     # least-recent context instead of most-recent (which the extractor
     # usually needs).
     projected = list(reversed(projected))
+    is_array = schema.get("type") == "array" or "items" in schema
+    mode_hint = (
+        "This task expects MULTIPLE items. Return a JSON ARRAY where each "
+        "element matches the schema's `items` subschema. If no items are "
+        "visible in the evidence, return []. Never wrap the array in an object."
+        if is_array else
+        "Return a single JSON OBJECT matching the schema."
+    )
     parts = [
+        f"Mode: {mode_hint}",
         f"Target schema:\n{json.dumps(schema, ensure_ascii=False)}",
         f"Observations (most-recent first):\n{json.dumps(projected, ensure_ascii=False)[:12000]}",
     ]
