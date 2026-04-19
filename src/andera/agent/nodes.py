@@ -23,7 +23,9 @@ from andera.tools.browser import (
 )
 
 from . import prompts
+from .classify import classify_task
 from .plan_cache import PlanCache, plan_key
+from .specialists import system_prompt_for
 from .state import AgentState, compact_observations
 
 REFLECT_MAX = 3
@@ -41,6 +43,7 @@ class AgentDeps:
     judge: ChatModel
     browser: BrowserTools
     plan_cache: PlanCache | None = None
+    classifier: ChatModel | None = None  # Haiku; if None, classifier node is a noop
 
 
 def _parse_json(text: str) -> Any:
@@ -57,11 +60,31 @@ def _parse_json(text: str) -> Any:
     return json.loads(s)
 
 
+def make_classify_node(deps: AgentDeps):
+    """Classify task type once; specialists dispatch on this."""
+
+    async def classify(state: AgentState) -> dict:
+        # Already classified (e.g., re-entered after replan)? Pass through.
+        if state.get("task_type"):
+            return {}
+        if deps.classifier is None:
+            return {"task_type": "unknown"}
+        task_type = await classify_task(
+            state.get("task_prompt", ""),
+            state.get("extract_schema") or {},
+            deps.classifier,
+        )
+        return {"task_type": task_type}
+
+    return classify
+
+
 def make_plan_node(deps: AgentDeps):
     async def plan(state: AgentState) -> dict:
         task_prompt = state.get("task_prompt", "")
         schema = state.get("extract_schema") or {}
         start_url = state.get("start_url")
+        task_type = state.get("task_type") or "unknown"
 
         # Check cache — identical task+schema+url_pattern -> reuse plan.
         cache_key = plan_key(task_prompt, schema, start_url)
@@ -77,8 +100,11 @@ def make_plan_node(deps: AgentDeps):
                     "plan_cache_hit": True,
                 }
 
+        # Specialist system prompt driven by classified task type. Falls
+        # back to the generic planner prompt when classifier was absent.
+        system_prompt = system_prompt_for(task_type)
         messages = [
-            {"role": "system", "content": prompts.PLANNER_SYSTEM},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompts.planner_user(
                 task_prompt=task_prompt,
                 input_data=state.get("input_data", {}),

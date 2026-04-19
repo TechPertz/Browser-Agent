@@ -22,6 +22,7 @@ from langgraph.graph import END, START, StateGraph
 from .nodes import (
     AgentDeps,
     make_act_node,
+    make_classify_node,
     make_extract_node,
     make_judge_node,
     make_observe_node,
@@ -38,6 +39,7 @@ from .state import AgentState
 def build_graph(deps: AgentDeps):
     """Return an uncompiled StateGraph. Caller supplies a checkpointer."""
     g = StateGraph(AgentState)
+    g.add_node("classify", make_classify_node(deps))
     g.add_node("plan", make_plan_node(deps))
     g.add_node("act", make_act_node(deps))
     g.add_node("observe", make_observe_node(deps))
@@ -45,7 +47,8 @@ def build_graph(deps: AgentDeps):
     g.add_node("extract", make_extract_node(deps))
     g.add_node("judge", make_judge_node(deps))
 
-    g.add_edge(START, "plan")
+    g.add_edge(START, "classify")
+    g.add_edge("classify", "plan")
     g.add_conditional_edges("plan", route_after_plan, {"act": "act", "failed": END})
     g.add_conditional_edges(
         "act",
