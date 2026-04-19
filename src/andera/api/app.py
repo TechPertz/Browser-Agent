@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from andera.storage import init_db
 
-from .routes import connections, evidence, events, runs, samples, ui
+from .routes import connections, evidence, events, runs, samples, screencast, ui
 
 
 @asynccontextmanager
@@ -43,6 +43,7 @@ def create_app() -> FastAPI:
     app.include_router(evidence.router, tags=["evidence"])
     app.include_router(events.router, tags=["events"])
     app.include_router(connections.router, tags=["connections"])
+    app.include_router(screencast.router, tags=["screencast"])
     app.include_router(ui.router, tags=["ui"])
 
     @app.get("/api/health")

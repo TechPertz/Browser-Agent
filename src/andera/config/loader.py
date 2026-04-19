@@ -32,6 +32,11 @@ class BrowserConfig(BaseModel):
     concurrency: int = Field(default=4, ge=1, le=64)
     stealth: bool = True
     viewport: Viewport = Field(default_factory=Viewport)
+    # When true, the orchestrator starts a CDP screencast per sample and
+    # publishes frames on the EventBus. Off by default: adds CPU load and
+    # is only useful when a dashboard is watching.
+    screencast: bool = False
+    screencast_fps: int = Field(default=10, ge=1, le=30)
 
 
 class QueueConfig(BaseModel):

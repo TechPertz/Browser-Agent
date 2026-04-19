@@ -123,7 +123,24 @@ class RunWorkflow:
             kind="sample.started", run_id=self.run_id, sample_id=sample_id,
             payload={"row_index": job.get("row_index")},
         )
+        # Optional screencast — only when profile enables it. Frames go to
+        # the EventBus so the /api/screencast WebSocket can relay them.
+        cast = None
+        if self.profile.browser.screencast:
+            from andera.api.ws import get_bus
+            from andera.browser import Screencaster
         async with self.pool.acquire(sample_id=sample_id, run_id=self.run_id) as session:
+            if self.profile.browser.screencast:
+                page = getattr(session, "_page", None)
+                if page is not None:
+                    cast = Screencaster(
+                        page, sample_id=sample_id, publish=get_bus().publish,
+                        fps=self.profile.browser.screencast_fps,
+                    )
+                    try:
+                        await cast.start()
+                    except Exception:
+                        cast = None
             deps = _build_deps(self.profile, BrowserTools(session), self.plan_cache)
             initial = {
                 "run_id": self.run_id,
@@ -134,12 +151,19 @@ class RunWorkflow:
                 "extract_schema": self.task.get("extract_schema") or {},
                 "status": "pending",
             }
-            final = await run_sample(
-                deps=deps,
-                initial_state=initial,
-                checkpoint_db=Path("data") / f"{self.run_id}.ckpt.db",
-                thread_id=sample_id,
-            )
+            try:
+                final = await run_sample(
+                    deps=deps,
+                    initial_state=initial,
+                    checkpoint_db=Path("data") / f"{self.run_id}.ckpt.db",
+                    thread_id=sample_id,
+                )
+            finally:
+                if cast is not None:
+                    try:
+                        await cast.stop()
+                    except Exception:
+                        pass
         result = {
             "sample_id": sample_id,
             "row_index": job.get("row_index"),
