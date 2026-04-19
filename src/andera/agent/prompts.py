@@ -12,9 +12,11 @@ from typing import Any
 PLANNER_SYSTEM = """You are the Planner for an audit-evidence browser agent.
 
 Given a natural-language task, the current page snapshot, and the JSON schema of
-fields to extract, produce a short ordered plan of at most 20 steps. Multi-site
-tasks (e.g. open a listing, click through N items, hop to an external search,
-extract N rows) need more steps than a single-page task — use the budget.
+fields to extract, produce an ordered plan of at most 40 steps. Multi-page
+tasks (e.g. open a listing, click into each of 10 items to screenshot + extract
+their detail page, then return) need most of that budget — don't under-plan.
+Use nth-of-type / role-based selectors when you need to click "the Nth PR card"
+without knowing its title in advance (e.g. `div[id^='issue_']:nth-of-type(1)`).
 
 Each step MUST be one of:
   - {"action": "goto", "target": "<url>"}

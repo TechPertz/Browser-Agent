@@ -81,7 +81,7 @@ async def run_sample(
     initial_state: AgentState,
     checkpoint_db: str | Path = "data/checkpoints.db",
     thread_id: str | None = None,
-    recursion_limit: int = 100,
+    recursion_limit: int = 200,
     compiled_graph: Any = None,
     postgres_url: str | None = None,
 ) -> dict[str, Any]:
@@ -135,7 +135,7 @@ async def invoke_compiled(
     *,
     initial_state: AgentState,
     thread_id: str,
-    recursion_limit: int = 100,
+    recursion_limit: int = 200,
 ) -> dict[str, Any]:
     """Fast path: caller has compiled the graph once and holds the saver
     context open across many samples."""
