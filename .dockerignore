@@ -1,0 +1,54 @@
+# Keep the build context small and free of secrets.
+
+# virtualenvs
+.venv/
+venv/
+
+# python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# runtime artifacts — never bake into images
+data/
+runs/
+logs/
+
+# caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# git / dev
+.git/
+.github/
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# secrets
+.env
+.env.*
+
+# docs that aren't needed at runtime
+*.md
+spec/*.pdf
+spec/*.docx
+spec/*.png
+memory/
+
+# tests + fixtures don't belong in deployed images
+tests/
+
+# don't rebuild the compose config into itself
+docker/
+
+# noise
+node_modules/

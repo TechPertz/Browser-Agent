@@ -28,6 +28,10 @@ class RunRecord:
     error: str | None = None
     task_fut: asyncio.Task | None = None
     samples: list[dict[str, Any]] = field(default_factory=list)
+    # Distributed-mode state: the RunWorkflow stays alive so the API's
+    # finalizer loop can poll queue_drained() and call finalize() once.
+    workflow: Any = None
+    awaits_finalization: bool = False
 
     def public_dict(self) -> dict[str, Any]:
         return {
@@ -48,6 +52,15 @@ class RunRegistry:
 
     def register(self, rec: RunRecord) -> None:
         self._runs[rec.run_id] = rec
+
+    def pending_finalization(self):
+        """Yield records that are waiting for the finalizer loop."""
+        return [r for r in self._runs.values() if r.awaits_finalization]
+
+    def mark_finalized(self, run_id: str) -> None:
+        rec = self._runs.get(run_id)
+        if rec is not None:
+            rec.awaits_finalization = False
 
     def get(self, run_id: str) -> RunRecord | None:
         rec = self._runs.get(run_id)

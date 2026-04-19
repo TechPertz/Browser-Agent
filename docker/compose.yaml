@@ -1,16 +1,26 @@
-# Self-hosted Langfuse + its Postgres, plus the mock Workday service.
-# Single-command local stack:
+# Full Andera stack. Single command:
 #   docker compose -f docker/compose.yaml up -d
 #
-# After up: open http://localhost:3000 to create a Langfuse project, copy
-# the public/secret keys into .env, then flip
-#   observability.langfuse.enabled: true
-# in config/profile.yaml.
+# Services:
+#   api           - FastAPI + dashboard on http://localhost:8000
+#   agent         - `andera agent`; scale horizontally (default 3 replicas)
+#   redis         - shared queue + future rate limiter + pub/sub
+#   postgres      - audit log + LangGraph checkpoints + run metadata
+#   mock-workday  - http://localhost:8001 for tasks 1 + 5
+#   langfuse      - optional; http://localhost:3000
+#   langfuse-db   - postgres instance dedicated to Langfuse
+#
+# Scale agents:
+#   docker compose -f docker/compose.yaml up -d --scale agent=10
+#
+# Tail agent logs:
+#   docker compose -f docker/compose.yaml logs -f agent
+#
+# Fresh start (wipe volumes):
+#   docker compose -f docker/compose.yaml down -v
 
 services:
   redis:
-    # Shared queue + (future) shared plan cache + rate limiter.
-    # Flip `profile.queue.backend: redis` to use this.
     image: redis:7-alpine
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
@@ -24,9 +34,87 @@ services:
       timeout: 3s
       retries: 5
 
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: andera
+      POSTGRES_PASSWORD: andera
+      POSTGRES_DB: andera
+    ports:
+      - "5432:5432"
+    volumes:
+      - andera_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U andera -d andera"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: api
+    image: andera-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../runs:/app/runs
+      - ../data:/app/data
+      - ../config:/app/config:ro
+    env_file:
+      - ../.env
+    environment:
+      ANDERA_REDIS_URL: redis://redis:6379/0
+      ANDERA_POSTGRES_URL: postgresql://andera:andera@postgres:5432/andera
+      ANDERA_BACKEND: postgres
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  agent:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: agent
+    image: andera-agent
+    restart: unless-stopped
+    volumes:
+      - ../runs:/app/runs
+      - ../data:/app/data
+      - ../config:/app/config:ro
+    env_file:
+      - ../.env
+    environment:
+      ANDERA_REDIS_URL: redis://redis:6379/0
+      ANDERA_POSTGRES_URL: postgresql://andera:andera@postgres:5432/andera
+      ANDERA_BACKEND: postgres
+    deploy:
+      replicas: 3
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  mock-workday:
+    build:
+      context: ../services/mock_workday
+      dockerfile: Dockerfile
+    image: andera-mock-workday
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+
+  # --- optional: self-hosted Langfuse for LLM trace UI ---
   langfuse-db:
     image: postgres:16-alpine
     restart: unless-stopped
+    profiles: ["langfuse"]
     environment:
       POSTGRES_USER: langfuse
       POSTGRES_PASSWORD: langfuse
@@ -42,6 +130,7 @@ services:
   langfuse:
     image: langfuse/langfuse:2
     restart: unless-stopped
+    profiles: ["langfuse"]
     depends_on:
       langfuse-db:
         condition: service_healthy
@@ -56,5 +145,6 @@ services:
       - "3000:3000"
 
 volumes:
-  langfuse_db:
   redis_data:
+  andera_pg:
+  langfuse_db:

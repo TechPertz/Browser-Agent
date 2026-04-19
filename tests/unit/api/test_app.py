@@ -26,7 +26,12 @@ def client(monkeypatch, tmp_path):
 def test_health(client):
     r = client.get("/api/health")
     assert r.status_code == 200
-    assert r.json() == {"ok": True}
+    body = r.json()
+    assert body["ok"] is True
+    # Always returns ok=true; queue_backend / metadata_backend are
+    # best-effort (present when profile loads; profile_error populated
+    # when it doesn't — e.g. test fixture chdir'd away from config/).
+    assert "anthropic_configured" in body
 
 
 def test_evidence_bad_sha_rejected(client):

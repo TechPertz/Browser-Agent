@@ -67,6 +67,7 @@ async def create_run(req: CreateRunRequest) -> dict[str, Any]:
         status="queued",
         total=len(rows[: req.max_samples] if req.max_samples else rows),
         task=task_spec,
+        workflow=wf,
     )
     get_registry().register(rec)
 
@@ -74,6 +75,14 @@ async def create_run(req: CreateRunRequest) -> dict[str, Any]:
         rec.status = "running"
         try:
             result = await wf.execute()
+            # In distributed mode, execute() returns immediately after
+            # enqueuing. Hand off to the API's finalizer loop, which
+            # will call wf.finalize() once the queue drains.
+            if profile.queue.distributed:
+                rec.awaits_finalization = True
+                rec.run_root = str(result.run_root)
+                # rec.status stays "running" until finalizer flips it.
+                return
             rec.status = "completed"
             rec.total = result.total
             rec.passed = result.passed

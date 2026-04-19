@@ -85,8 +85,10 @@ async def test_run_all_pass(monkeypatch, profile, tmp_path):
     assert len(r) == 6  # header + 5
 
     manifest = json.loads(result.manifest.read_text())
-    assert manifest["passed"] == 5
+    assert manifest["totals"]["passed"] == 5
     assert len(manifest["samples"]) == 5
+    assert manifest["audit_root_hash"]
+    assert manifest["manifest_hash"]
 
 
 async def test_run_mixed_verdicts(monkeypatch, profile, tmp_path):
