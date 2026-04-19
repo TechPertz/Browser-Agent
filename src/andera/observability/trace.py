@@ -16,16 +16,27 @@ from typing import Any
 class JsonlTraceSink:
     def __init__(self, root: str | Path = "data/traces") -> None:
         self.root = Path(root)
-        self.root.mkdir(parents=True, exist_ok=True)
+        # Best-effort init; tests/cwd changes may require a lazy remake.
+        try:
+            self.root.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
 
     def _path_for_today(self) -> Path:
         date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        # Re-ensure the dir each write so cwd changes (common in tests)
+        # don't crash the sink.
+        self.root.mkdir(parents=True, exist_ok=True)
         return self.root / f"{date}.jsonl"
 
     def write(self, event: dict[str, Any]) -> None:
         event = {"ts": datetime.now(timezone.utc).isoformat(), **event}
-        with self._path_for_today().open("a") as f:
-            f.write(json.dumps(event, default=str, ensure_ascii=False) + "\n")
+        try:
+            with self._path_for_today().open("a") as f:
+                f.write(json.dumps(event, default=str, ensure_ascii=False) + "\n")
+        except OSError:
+            # Telemetry failure must never crash the run.
+            pass
 
 
 _sink: JsonlTraceSink | None = None
