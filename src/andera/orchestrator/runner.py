@@ -35,6 +35,7 @@ from andera.agent.plan_cache import PlanCache
 from andera.browser import BrowserPool
 from andera.config import Profile
 from andera.models import Role, get_model
+from andera.observability import get_trace_sink, install_langfuse_if_enabled
 from andera.storage import AuditLog, FilesystemArtifactStore, write_manifest
 from andera.tools.browser import BrowserTools
 
@@ -287,6 +288,12 @@ class RunWorkflow:
     async def execute(self) -> RunResult:
         self._save_run_config()
         self._install_signal_handlers()
+        # Best-effort: Langfuse if configured; always: local JSONL trace sink.
+        install_langfuse_if_enabled(self.profile)
+        self._trace = get_trace_sink()
+        self._trace.write({"kind": "run.init", "run_id": self.run_id,
+                           "task": self.task.get("task_id"),
+                           "total": len(self.rows)})
 
         if self.resuming:
             # Pull any prior completions into our counters + skip set.
@@ -328,6 +335,9 @@ class RunWorkflow:
             kind="run.completed", run_id=self.run_id,
             payload={"passed": passed, "failed": failed, "total": total},
         )
+        if hasattr(self, "_trace"):
+            self._trace.write({"kind": "run.completed", "run_id": self.run_id,
+                               "passed": passed, "failed": failed, "total": total})
         audit_root = self.audit.root_hash(run_id=self.run_id)
         samples_summary = self._samples_summary_from_jsonl()
         manifest_path = write_manifest(
