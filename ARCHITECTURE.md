@@ -303,6 +303,60 @@ My rule of thumb:
 
 ---
 
+## How to demo horizontal scale today
+
+Everything needed to run multi-worker is in the repo. No refactor required.
+
+```bash
+# 1. Start shared Redis + (optional) Langfuse + mock Workday
+docker compose -f docker/compose.yaml up -d redis
+
+# 2. Flip the queue backend
+# In config/profile.yaml:
+#   queue:
+#     backend: redis              # was: sqlite
+#     redis_url: redis://localhost:6379/0
+
+# 3. Start the coordinator (enqueues samples, finalizes CSV + manifest)
+uv run andera run \
+  -t config/tasks/02-linear-tickets.yaml \
+  -i tests/fixtures/02-linear-tickets.csv \
+  &
+
+# 4. In another terminal (or another machine pointed at the same Redis),
+#    spin up a second worker. The first one is already inside the
+#    coordinator process; this is a FOREIGN worker joining the run.
+RUN_ID=$(ls -t runs/ | head -1)
+uv run andera worker "$RUN_ID" --worker-id pod-2 &
+
+# 5. And a third:
+uv run andera worker "$RUN_ID" --worker-id pod-3 &
+
+# All three pull from the same queue. samples.jsonl fills up; each row
+# carries a `worker_id` so you can see the split. When the queue drains,
+# the coordinator finalizes output.csv + RUN_MANIFEST.json.
+```
+
+The test `tests/unit/orchestrator/test_worker.py` pins this with
+fakeredis: 2 workers × 10 samples × zero duplicate claims.
+
+### What stays the same regardless of scale
+
+- `src/andera/agent/` — the state machine doesn't know how many boxes are running
+- `src/andera/orchestrator/runner.py` — lifecycle code is identical
+- `src/andera/api/` — the dashboard polls the same JSONL/manifest either way
+- Task YAMLs, profile.yaml structure, CLI surface
+
+### What to flip as scale grows
+
+| Scale | profile.yaml flip |
+|---|---|
+| 1 box, 1-10k samples | `queue.backend: sqlite` (default) |
+| 2+ boxes, 10k-100k samples | `queue.backend: redis` + spin up `andera worker <run_id>` on each box |
+| Cross-region, 1M+ samples | Swap `TaskQueue` Protocol impl for Kafka/NATS. `ArtifactStore` → S3. `storage.metadata` → Postgres. |
+
+---
+
 ## The honest scorecard on what's "production-ready"
 
 | Concern | Today | For 10k/day | For 10M/day |
