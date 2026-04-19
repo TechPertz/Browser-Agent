@@ -55,23 +55,31 @@ class PlanCache:
     def __init__(self, root: str | Path = DEFAULT_CACHE_DIR) -> None:
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
+        # In-memory layer: after the first sample warms the on-disk entry,
+        # every subsequent cache hit is an O(1) dict lookup instead of a
+        # sync filesystem read on the event loop.
+        self._mem: dict[str, list[dict[str, Any]]] = {}
 
     def _path(self, key: str) -> Path:
         return self.root / f"{key}.json"
 
     def get(self, key: str) -> list[dict[str, Any]] | None:
+        if key in self._mem:
+            return self._mem[key]
         p = self._path(key)
         if not p.exists():
             return None
         try:
             data = json.loads(p.read_text())
             if isinstance(data, list):
+                self._mem[key] = data
                 return data
         except Exception:
             return None
         return None
 
     def put(self, key: str, plan: list[dict[str, Any]]) -> None:
+        self._mem[key] = plan
         p = self._path(key)
         tmp = p.with_suffix(p.suffix + ".tmp")
         tmp.write_text(json.dumps(plan, ensure_ascii=False))

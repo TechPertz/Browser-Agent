@@ -61,19 +61,34 @@ def _parse_json(text: str) -> Any:
 
 
 def make_classify_node(deps: AgentDeps):
-    """Classify task type once; specialists dispatch on this."""
+    """Classify task type once; specialists dispatch on this.
+
+    Classification is a pure function of (task_prompt, schema). Every
+    sample in a run has the same task_prompt + schema, so we cache the
+    result in a closure dict — N samples produce 1 Haiku call instead
+    of N calls. Saves 20-50 s on a 1000-sample run.
+    """
+    from .classify import classify_cache_key
+
+    _memo: dict[str, str] = {}
 
     async def classify(state: AgentState) -> dict:
-        # Already classified (e.g., re-entered after replan)? Pass through.
         if state.get("task_type"):
             return {}
         if deps.classifier is None:
             return {"task_type": "unknown"}
+        key = classify_cache_key(
+            state.get("task_prompt", ""),
+            state.get("extract_schema") or {},
+        )
+        if key in _memo:
+            return {"task_type": _memo[key]}
         task_type = await classify_task(
             state.get("task_prompt", ""),
             state.get("extract_schema") or {},
             deps.classifier,
         )
+        _memo[key] = task_type
         return {"task_type": task_type}
 
     return classify

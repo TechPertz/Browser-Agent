@@ -53,19 +53,25 @@ class AuditLog:
         *,
         on_append: Any = None,
     ) -> None:
+        import threading
         self._db_path = Path(db_path)
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         self._on_append = on_append
+        # One persistent connection + in-process lock for the chain. The
+        # lock REPLACES SQLite's IMMEDIATE transaction for serializing
+        # writers in-process, eliminating both the new-connection cost
+        # and the IMMEDIATE lock-wait under concurrent append.
+        self._conn = sqlite3.connect(
+            self._db_path, isolation_level=None, check_same_thread=False
+        )
+        self._conn.row_factory = sqlite3.Row
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._lock = threading.Lock()
         self._ensure()
 
-    def _conn(self) -> sqlite3.Connection:
-        c = sqlite3.connect(self._db_path, isolation_level=None)
-        c.row_factory = sqlite3.Row
-        c.execute("PRAGMA journal_mode=WAL")
-        return c
-
     def _ensure(self) -> None:
-        with self._conn() as c:
+        with self._lock:
+            c = self._conn
             c.execute("""
                 CREATE TABLE IF NOT EXISTS audit_log (
                     event_id     TEXT PRIMARY KEY,
@@ -95,8 +101,8 @@ class AuditLog:
         event_id = event_id or str(uuid.uuid4())
         ts = _utcnow()
         payload = payload or {}
-        with self._conn() as c:
-            c.execute("BEGIN IMMEDIATE")
+        with self._lock:
+            c = self._conn
             row = c.execute(
                 "SELECT this_hash FROM audit_log ORDER BY rowid DESC LIMIT 1"
             ).fetchone()
@@ -108,7 +114,6 @@ class AuditLog:
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 (event_id, kind, run_id, sample_id, ts, _canonical(payload), prev, this_hash),
             )
-            c.execute("COMMIT")
         if self._on_append is not None:
             try:
                 self._on_append({
@@ -126,7 +131,8 @@ class AuditLog:
 
     def root_hash(self, run_id: str | None = None) -> str:
         """Latest this_hash (optionally scoped to a run)."""
-        with self._conn() as c:
+        with self._lock:
+            c = self._conn
             if run_id is None:
                 row = c.execute(
                     "SELECT this_hash FROM audit_log ORDER BY rowid DESC LIMIT 1"
@@ -140,8 +146,8 @@ class AuditLog:
 
     def verify_chain(self) -> bool:
         """Walk the entire log; recompute every this_hash; confirm integrity."""
-        with self._conn() as c:
-            rows = c.execute(
+        with self._lock:
+            rows = self._conn.execute(
                 "SELECT event_id, kind, run_id, sample_id, timestamp, payload_json, prev_hash, this_hash "
                 "FROM audit_log ORDER BY rowid ASC"
             ).fetchall()
@@ -157,8 +163,8 @@ class AuditLog:
         return True
 
     def rows_for_run(self, run_id: str) -> list[dict[str, Any]]:
-        with self._conn() as c:
-            rows = c.execute(
+        with self._lock:
+            rows = self._conn.execute(
                 "SELECT event_id, kind, run_id, sample_id, timestamp, payload_json, prev_hash, this_hash "
                 "FROM audit_log WHERE run_id=? ORDER BY rowid ASC",
                 (run_id,),
