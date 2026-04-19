@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Search · Mock Workday{% endblock %}
+{% block content %}
+<h2>Search results for "{{ query }}"</h2>
+<p><a href="/directory">← back to directory</a></p>
+{% if matches %}
+<table>
+  <thead>
+    <tr><th>Employee ID</th><th>Name</th><th>Title</th><th>Department</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for e in matches %}
+    <tr>
+      <td>{{ e.employee_id }}</td>
+      <td>{{ e.name }}</td>
+      <td>{{ e.title }}</td>
+      <td>{{ e.department }}</td>
+      <td><a class="btn" href="/people/{{ e.employee_id }}">Open</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="card">No matches.</div>
+{% endif %}
+{% endblock %}

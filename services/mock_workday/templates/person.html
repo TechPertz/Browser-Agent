@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ employee.name }} · Mock Workday{% endblock %}
+{% block content %}
+<p><a href="/directory">← directory</a></p>
+<div class="card">
+  <h2>{{ employee.name }}</h2>
+  <p><span class="pill">{{ employee.employee_id }}</span></p>
+  <table style="margin-top: 16px;">
+    <tr><th>Title</th><td>{{ employee.title }}</td></tr>
+    <tr><th>Department</th><td>{{ employee.department }}</td></tr>
+    <tr><th>GitHub handle</th><td>{{ employee.handle or "—" }}</td></tr>
+    <tr><th>Email</th><td>{{ employee.email or "—" }}</td></tr>
+  </table>
+</div>
+{% endblock %}

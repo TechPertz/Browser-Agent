@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Confirmation {{ confirmation_id }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Request submitted</h2>
+  <p>Confirmation ID: <span class="pill">{{ confirmation_id }}</span></p>
+  <p>Employee: {{ employee_id }} · Type: {{ request_type }}</p>
+  <p style="margin-top: 16px;">
+    <a class="btn" href="{{ attachment_url }}">Download confirmation</a>
+  </p>
+</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Directory · Mock Workday{% endblock %}
+{% block content %}
+<h2>Employee Directory</h2>
+<form action="/directory/search" method="get" class="card">
+  <label>Search</label>
+  <input name="q" placeholder="name, handle, or employee id" />
+  <div style="margin-top: 12px;">
+    <button type="submit">Search</button>
+  </div>
+</form>
+<h2 style="margin-top: 32px;">All employees ({{ employees|length }})</h2>
+<table>
+  <thead>
+    <tr><th>Employee ID</th><th>Name</th><th>Title</th><th>Department</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for e in employees %}
+    <tr>
+      <td>{{ e.employee_id }}</td>
+      <td>{{ e.name }}</td>
+      <td>{{ e.title }}</td>
+      <td>{{ e.department }}</td>
+      <td><a class="btn" href="/people/{{ e.employee_id }}">Open</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

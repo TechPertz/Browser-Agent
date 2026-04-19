@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}New Request · Mock Workday{% endblock %}
+{% block content %}
+<h2>New Request</h2>
+<form action="/forms/submit" method="post" class="card">
+  <label>Employee ID</label>
+  <input name="employee_id" required />
+  <label>Request type</label>
+  <select name="request_type" required>
+    <option>PTO</option>
+    <option>Expense</option>
+    <option>Equipment</option>
+  </select>
+  <label>Start date</label>
+  <input name="start_date" type="date" />
+  <label>Notes</label>
+  <textarea name="notes" rows="3"></textarea>
+  <div style="margin-top: 16px;">
+    <button type="submit">Submit</button>
+  </div>
+</form>
+{% endblock %}
