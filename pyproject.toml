@@ -8,6 +8,8 @@ dependencies = [
     "pyyaml>=6.0",
     "python-dotenv>=1.0",
     "cryptography>=42",
+    "litellm>=1.48",
+    "playwright>=1.47",
 ]
 
 [project.optional-dependencies]
