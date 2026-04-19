@@ -5,6 +5,138 @@ sample (one row from the input CSV) and drives a browser until that sample
 either passes, fails, or exhausts its retry budget. No orchestration, no
 Docker, no API. Just the agent.
 
+---
+
+## 0. Visual overview — full state machine with loops
+
+Every node, every edge, every retry condition. Labels show the state
+mutations that cause the transition. Dashed arrows = error/abort paths.
+Bold arrows = escalation loops (replan / judge-feedback). Thin arrows
+= happy path + in-budget retries.
+
+```mermaid
+flowchart TD
+    START((START))
+
+    classify["`**classify** · Haiku
+    memoized per (prompt_hash, schema_hash)
+    → sets state.task_type`"]
+
+    plan["`**plan** · Opus + specialist_prompt(task_type)
+    plan_cache keyed on (prompt + canonical schema + url_pattern)
+    cache HIT: skip LLM, reuse plan
+    → sets plan, step_index=0,
+      reflect_count=0, consecutive_fails=0`"]
+
+    act["`**act** · execute plan[step_index] via BrowserTools
+    tool error → set last_tool_error, consecutive_fails++
+    action=done → status=extracting`"]
+
+    observe["`**observe** · build_snapshot(page)
+    compact_observations:
+     · kind='extract' entries kept verbatim (ALWAYS)
+     · snapshots windowed to last 5`"]
+
+    verify["`**verify** · last_tool_error set? ok=false (no LLM)
+    else Navigator(task + current_step + snapshot)
+    garbled LLM output → ok=false (NEVER silent-pass)`"]
+
+    extract["`**extract** · Haiku + response_format=schema
+    jsonschema validate
+    if invalid: retry ≤ 2 with errors + prior attempt
+    (judge_feedback embedded on re-entry)`"]
+
+    judge["`**judge** · Opus evaluates
+    task + extracted + evidence
+    → verdict ∈ {pass, fail, uncertain}`"]
+
+    END_PASS((END
+    verdict=pass))
+
+    END_FAIL_V((END
+    verdict=fail/uncertain
+    budget exhausted))
+
+    END_ABORT((END
+    status=failed
+    internal error))
+
+    START --> classify
+    classify --> plan
+
+    plan -->|plan is a list| act
+    plan -.->|plan parse error<br/>status=failed| END_ABORT
+
+    act -->|action ∈ goto/click/type/<br/>screenshot/extract<br/>no tool error| observe
+    act -->|action = done<br/>status=extracting| extract
+    act -.->|unknown action<br/>status=failed| END_ABORT
+
+    observe --> verify
+
+    verify -->|ok=true<br/>step_index++<br/>consecutive_fails=0<br/>last_tool_error=None| act
+    verify -->|ok=false<br/>reflect_count<3<br/>consecutive_fails<2<br/>retry same step| act
+    verify ==>|consecutive_fails≥2<br/>REPLAN escalation<br/>reflect_count++| plan
+    verify -.->|reflect_count≥3<br/>reflection cap reached| END_ABORT
+    verify -->|step_index ≥ len plan<br/>plan drained| extract
+
+    extract -.->|schema invalid<br/>retry ≤ 2<br/>errors + prior attempt inline| extract
+    extract -->|valid output| judge
+    extract -.->|parse fail<br/>after all retries| END_ABORT
+
+    judge -->|verdict=pass| END_PASS
+    judge ==>|verdict=fail/uncertain<br/>reflect_count<3<br/>JUDGE FEEDBACK LOOP<br/>→ status=extracting| extract
+    judge -->|verdict=fail/uncertain<br/>reflect_count≥3<br/>judge budget exhausted| END_FAIL_V
+
+    classDef ok fill:#164e1e,stroke:#22c55e,color:#e6e8ee,font-weight:bold
+    classDef bad fill:#4a0e0e,stroke:#ef4444,color:#e6e8ee,font-weight:bold
+    classDef partial fill:#4a3a0e,stroke:#eab308,color:#e6e8ee,font-weight:bold
+    classDef node fill:#181b22,stroke:#2a2f3a,color:#e6e8ee
+
+    class START,END_PASS ok
+    class END_ABORT bad
+    class END_FAIL_V partial
+    class classify,plan,act,observe,verify,extract,judge node
+```
+
+### Reading the diagram
+
+**Three terminal states** (ovals):
+
+- `END · verdict=pass` — normal success. Judge liked the extraction.
+- `END · verdict=fail/uncertain` — agent completed its loop but couldn't convince the judge. Sample still produces a row in `output.csv` with the failing verdict. `reflect_count` ran out before fixing the extraction.
+- `END · status=failed` — internal error short-circuit. No verdict. Happens when the planner outputs garbage, a tool action is malformed, or the reflection cap is hit on a bad plan step.
+
+**Three retry loops** (all bounded, all distinct):
+
+| Loop | Trigger | Budget | What happens |
+|---|---|---|---|
+| **Step retry** | Verifier says `ok=false` | `reflect_count < 3` AND `consecutive_fails < 2` | Re-run `act` on the same `step_index` |
+| **Replan escalation** | Same step failed twice in a row | `consecutive_fails ≥ 2` AND `reflect_count < 3` | Back to `plan` for a fresh plan |
+| **Judge feedback** | Judge returns fail/uncertain | `reflect_count < 3` | Back to `extract` with judge's reason embedded in the prompt |
+
+Plus one **internal retry** that lives inside a single node invocation (not a graph loop):
+
+| Loop | Trigger | Budget | What happens |
+|---|---|---|---|
+| **Extract schema retry** | LLM returned output that fails jsonschema validation | `attempt ≤ 2` (so 3 total tries) | Re-ask the extractor with the validation errors + prior attempt inline. Does NOT count against `reflect_count`. |
+
+**Caches** (not loops — just side-effects that short-circuit LLM calls):
+
+- **Classify memo**: `classify` skips the Haiku call after the first sample of a given `(prompt, schema)` pair within an agent process.
+- **Plan cache**: `plan` skips the Opus call when the same `(prompt, canonical_schema, url_pattern)` hash is already on disk. URL pattern normalizes IDs (`/issue/ENG-1` → `/issue/:id`) so all samples of a task share a single cached plan.
+
+**Tool-error short-circuit** (not a separate edge — happens inside `verify`):
+
+When `act` detects a tool-layer failure (`ToolResult.status == "error"`), it sets `state.last_tool_error` and increments `consecutive_fails` directly. The graph still routes through `observe → verify` for evidence continuity, but the `verify` node checks `last_tool_error` first: if set, it immediately returns `ok=false` WITHOUT calling the Navigator LLM. This is a deliberate accuracy fix — we never want an LLM verifier to "hallucinate success" over a tool that definitively errored.
+
+**State the diagram doesn't show** (but see §2):
+
+- Evidence accumulates in `state.evidence` (screenshots) across every `act` invocation — append-only, never cleared.
+- `tool_calls` accumulates the full audit trail — append-only.
+- `observations` is replaced in place by `observe` (so compaction can drop old snapshots), while extracts inside it are preserved forever.
+
+---
+
 **Concepts covered** (in order):
 
 1. The runtime model — LangGraph, and why
