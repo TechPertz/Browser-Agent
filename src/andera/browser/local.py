@@ -19,6 +19,9 @@ from playwright.async_api import (
 
 from andera.contracts import Artifact, ArtifactStore
 
+from .grounding import build_snapshot
+from .set_of_mark import clear_marks, mark_and_screenshot, marks_to_list
+
 
 class LocalPlaywrightSession:
     """One tab, one agent sample.
@@ -116,13 +119,34 @@ class LocalPlaywrightSession:
         }
 
     async def snapshot(self) -> dict[str, Any]:
-        dom = await self._page.content()
-        return {
-            "url": self._page.url,
-            "title": await self._page.title(),
-            "html_len": len(dom),
-            "html_head": dom[:2048],
-        }
+        """Rich snapshot: url + title + inner text + a11y tree + interactives."""
+        return await build_snapshot(self._page)
+
+    async def mark_and_screenshot(self, name: str) -> tuple[Artifact, list[dict[str, Any]]]:
+        """Set-of-Mark overlay + screenshot. Returns (artifact, marks list)."""
+        png, marks = await mark_and_screenshot(self._page)
+        final_name = name if name.endswith(".png") else f"{name}.png"
+        art = await self._artifacts.put(
+            png, final_name, mime="image/png",
+            sample_id=self._sample_id, run_id=self._run_id,
+        )
+        self._last_marks = marks  # type: ignore[attr-defined]
+        return art, marks_to_list(marks)
+
+    async def click_mark(self, mark_id: int) -> None:
+        """Click the center of a previously-marked element."""
+        marks = getattr(self, "_last_marks", None) or {}
+        m = marks.get(mark_id)
+        if m is None:
+            raise ValueError(f"no such mark: {mark_id} (did you call mark_and_screenshot first?)")
+        cx = m.x + m.w // 2
+        cy = m.y + m.h // 2
+        await self._page.mouse.click(cx, cy)
+        # Best-effort clear so successive screenshots don't contain stale overlays.
+        try:
+            await clear_marks(self._page)
+        except Exception:
+            pass
 
     async def close(self) -> None:
         await self._context.close()
