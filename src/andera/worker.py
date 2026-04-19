@@ -120,49 +120,20 @@ class WorkerNode:
         )
 
     async def _process_one(self, job: dict[str, Any]) -> dict[str, Any]:
-        sample_id = job["sample_id"]
-        self.audit.append(
-            kind="sample.started", run_id=self.run_id, sample_id=sample_id,
-            payload={"row_index": job.get("row_index"), "worker": self.worker_id},
+        # Thin wrapper over the shared core — used by the legacy
+        # per-run WorkerNode path. run_agent_pool uses the same core.
+        return await _execute_sample(
+            job=job,
+            task=self.task,
+            run_id=self.run_id,
+            profile=self.profile,
+            pool=self.pool,
+            plan_cache=self.plan_cache,
+            audit=self.audit,
+            samples_jsonl_path=self.samples_jsonl,
+            write_lock=self._write_lock,
+            worker_id=self.worker_id,
         )
-        async with self.pool.acquire(sample_id=sample_id, run_id=self.run_id) as session:
-            deps = self._build_deps(session)
-            initial = {
-                "run_id": self.run_id,
-                "sample_id": sample_id,
-                "task_prompt": self.task.get("prompt", ""),
-                "input_data": job.get("input_data") or {},
-                "start_url": job.get("start_url"),
-                "extract_schema": self.task.get("extract_schema") or {},
-                "status": "pending",
-            }
-            final = await run_sample(
-                deps=deps,
-                initial_state=initial,
-                checkpoint_db=Path("data") / f"{self.run_id}.ckpt.db",
-                thread_id=sample_id,
-            )
-        result = {
-            "sample_id": sample_id,
-            "row_index": job.get("row_index"),
-            "verdict": final.get("verdict"),
-            "verdict_reason": final.get("verdict_reason"),
-            "extracted": final.get("extracted") or {},
-            "evidence": final.get("evidence") or [],
-            "evidence_count": len(final.get("evidence") or []),
-            "status": final.get("status"),
-            "error": final.get("error"),
-            "worker_id": self.worker_id,
-        }
-        self.audit.append(
-            kind="sample.completed" if result["verdict"] == "pass" else "sample.failed",
-            run_id=self.run_id, sample_id=sample_id,
-            payload={"verdict": result["verdict"], "worker": self.worker_id},
-        )
-        async with self._write_lock:
-            with self.samples_jsonl.open("a") as f:
-                f.write(json.dumps(result, default=str, ensure_ascii=False) + "\n")
-        return result
 
     async def run(self) -> int:
         """Loop until SIGTERM / queue drained. Returns count of processed jobs."""
@@ -219,3 +190,196 @@ async def run_worker(run_id: str, *, profile_path: Path | None = None,
         worker_id=worker_id or f"w-{uuid.uuid4().hex[:6]}",
     )
     return await node.run()
+
+
+# =============================================================================
+# Stateless core + run-agnostic agent pool
+# =============================================================================
+
+
+async def _execute_sample(
+    *,
+    job: dict[str, Any],
+    task: dict[str, Any],
+    run_id: str,
+    profile: Profile,
+    pool: BrowserPool,
+    plan_cache: PlanCache,
+    audit: AuditLog,
+    samples_jsonl_path: Path,
+    write_lock: asyncio.Lock,
+    worker_id: str,
+) -> dict[str, Any]:
+    """The shared sample-execution core. Used by both WorkerNode
+    (per-run mode) and run_agent_pool (run-agnostic). Everything it
+    needs is passed in; no self-state access."""
+    sample_id = job["sample_id"]
+    audit.append(
+        kind="sample.started", run_id=run_id, sample_id=sample_id,
+        payload={"row_index": job.get("row_index"), "worker": worker_id},
+    )
+    async with pool.acquire(sample_id=sample_id, run_id=run_id) as session:
+        deps = AgentDeps(
+            planner=get_model(Role.PLANNER, profile),
+            navigator=get_model(Role.NAVIGATOR, profile),
+            extractor=get_model(Role.EXTRACTOR, profile),
+            judge=get_model(Role.JUDGE, profile),
+            browser=BrowserTools(session),
+            plan_cache=plan_cache,
+            classifier=get_model(Role.EXTRACTOR, profile),
+        )
+        initial = {
+            "run_id": run_id,
+            "sample_id": sample_id,
+            "task_prompt": task.get("prompt", ""),
+            "input_data": job.get("input_data") or {},
+            "start_url": job.get("start_url"),
+            "extract_schema": task.get("extract_schema") or {},
+            "status": "pending",
+        }
+        final = await run_sample(
+            deps=deps,
+            initial_state=initial,
+            checkpoint_db=Path("data") / f"{run_id}.ckpt.db",
+            thread_id=sample_id,
+        )
+    result = {
+        "sample_id": sample_id,
+        "row_index": job.get("row_index"),
+        "verdict": final.get("verdict"),
+        "verdict_reason": final.get("verdict_reason"),
+        "extracted": final.get("extracted") or {},
+        "evidence": final.get("evidence") or [],
+        "evidence_count": len(final.get("evidence") or []),
+        "status": final.get("status"),
+        "error": final.get("error"),
+        "worker_id": worker_id,
+    }
+    audit.append(
+        kind="sample.completed" if result["verdict"] == "pass" else "sample.failed",
+        run_id=run_id, sample_id=sample_id,
+        payload={"verdict": result["verdict"], "worker": worker_id},
+    )
+    async with write_lock:
+        samples_jsonl_path.parent.mkdir(parents=True, exist_ok=True)
+        with samples_jsonl_path.open("a") as f:
+            f.write(json.dumps(result, default=str, ensure_ascii=False) + "\n")
+    return result
+
+
+async def run_agent_pool(
+    *,
+    profile: Profile,
+    agent_id: str,
+    redis_url: str | None = None,
+) -> int:
+    """Long-lived, run-agnostic agent. Pulls from the GLOBAL Redis queue,
+    executes whichever sample arrives, writes evidence to
+    `runs/<job.run_id>/` (shared across agents via volume mount).
+
+    No `.run_config.json` lookup. Each job carries its task + run_id
+    inline (see orchestrator/runner.py::_enqueue_all).
+
+    Returns the number of samples processed before shutdown."""
+    if profile.queue.backend != "redis":
+        raise RuntimeError(
+            "run_agent_pool requires profile.queue.backend=redis; "
+            f"got {profile.queue.backend!r}"
+        )
+
+    queue = make_queue(
+        backend="redis",
+        redis_url=redis_url or profile.queue.redis_url,
+        max_attempts=profile.queue.max_attempts,
+        global_queue=True,
+    )
+
+    # Per-process shared state: one Chromium for the agent's lifetime,
+    # one PlanCache (in-memory + shared disk), one trace sink. The
+    # artifact store root is `runs/`; per-run subdirectories are
+    # created on demand by FilesystemArtifactStore.put().
+    store = FilesystemArtifactStore("runs")
+    from andera.browser.rate_limiter import HostRateLimiter
+    pool = BrowserPool(
+        artifacts=store,
+        concurrency=profile.browser.concurrency,
+        headless=profile.browser.headless,
+        viewport=profile.browser.viewport.model_dump(),
+        stealth=profile.browser.stealth,
+        rate_limiter=HostRateLimiter(
+            rps=profile.browser.per_host_rps,
+            burst=profile.browser.per_host_burst,
+        ),
+    )
+    plan_cache = PlanCache()
+    install_langfuse_if_enabled(profile)
+    trace = get_trace_sink()
+    trace.write({"kind": "agent.start", "agent_id": agent_id})
+
+    # Per-run state (audit log, samples.jsonl path) — cached lazily so
+    # we don't re-open AuditLog on every sample from the same run.
+    audits: dict[str, AuditLog] = {}
+    jsonl_paths: dict[str, Path] = {}
+    write_lock = asyncio.Lock()
+
+    stop_event = asyncio.Event()
+    loop = asyncio.get_event_loop()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        try:
+            loop.add_signal_handler(sig, stop_event.set)
+        except (NotImplementedError, RuntimeError, ValueError):
+            pass
+
+    await pool.setup()
+    processed = 0
+    empty_rounds = 0
+    try:
+        while not stop_event.is_set():
+            job = await queue.dequeue()
+            if job is None:
+                empty_rounds += 1
+                # Idle agent containers stay alive — re-poll forever with
+                # a small backoff rather than exiting on drain.
+                await asyncio.sleep(min(0.5 * empty_rounds, 5.0))
+                continue
+            empty_rounds = 0
+            run_id = job.get("run_id")
+            task = job.get("task") or {}
+            if not run_id:
+                # Malformed job; dead-letter to avoid a poison pill loop.
+                await queue.dead_letter(job["item_id"])
+                continue
+            audit = audits.setdefault(
+                run_id, AuditLog(Path("data") / f"{run_id}.audit.db")
+            )
+            samples_path = jsonl_paths.setdefault(
+                run_id, Path("runs") / run_id / "samples.jsonl"
+            )
+            item_id = job["item_id"]
+            try:
+                res = await _execute_sample(
+                    job=job, task=task, run_id=run_id,
+                    profile=profile, pool=pool, plan_cache=plan_cache,
+                    audit=audit, samples_jsonl_path=samples_path,
+                    write_lock=write_lock, worker_id=agent_id,
+                )
+                if res.get("verdict") == "pass" or res.get("status") == "done":
+                    await queue.ack(item_id)
+                else:
+                    await queue.nack(item_id, res.get("error") or "no verdict")
+            except Exception as e:
+                await queue.nack(item_id, f"{type(e).__name__}: {e}")
+            processed += 1
+    finally:
+        try:
+            await pool.teardown()
+        except Exception:
+            pass
+        try:
+            if hasattr(queue, "close"):
+                await queue.close()
+        except Exception:
+            pass
+        trace.write({"kind": "agent.stop", "agent_id": agent_id,
+                     "processed": processed})
+    return processed

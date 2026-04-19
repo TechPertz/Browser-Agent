@@ -75,17 +75,45 @@ def run(
 
 
 @app.command()
+def agent(
+    agent_id: str | None = typer.Option(None, "--agent-id", help="Stable name; default is uuid-based."),
+    profile_path: Path | None = typer.Option(None, "--profile", help="Alt profile.yaml path."),
+) -> None:
+    """Run a long-lived, run-agnostic agent.
+
+    Pulls from the GLOBAL Redis queue (`andera:queue:global`). Each
+    job carries its run_id + task inline so the agent doesn't need to
+    know in advance which run it's serving. This is the entrypoint
+    for the `agent` containers in docker-compose; scale horizontally
+    via `docker compose up -d --scale agent=N`.
+
+    Requires `profile.queue.backend=redis`.
+    """
+    load_dotenv()
+    import uuid
+    from andera.worker import run_agent_pool
+
+    profile = load_profile(profile_path)
+    aid = agent_id or f"a-{uuid.uuid4().hex[:6]}"
+    typer.echo(
+        f"[agent {aid}] starting; queue={profile.queue.backend} "
+        f"redis={profile.queue.redis_url}", err=True,
+    )
+    processed = asyncio.run(run_agent_pool(profile=profile, agent_id=aid))
+    typer.echo(json.dumps({"agent_id": aid, "processed": processed}))
+
+
+@app.command()
 def worker(
     run_id: str = typer.Argument(..., help="Run id the coordinator already started."),
     worker_id: str | None = typer.Option(None, "--worker-id", help="Stable name; default is a uuid."),
     profile_path: Path | None = typer.Option(None, "--profile", help="Alt profile.yaml path."),
 ) -> None:
-    """Consume samples from the shared queue.
+    """Consume samples from a run-scoped queue (legacy / dev mode).
 
-    Run one of these per worker pod. Requires `profile.queue.backend=redis`
-    (or another shared backend) for multi-box scaling. With sqlite, it
-    still works on the same filesystem. Coordinator finalizes the run
-    once the queue drains.
+    Use when profile.queue.backend is `sqlite` OR you want a worker
+    bound to a single run. For the production multi-container stack,
+    use `andera agent` instead (run-agnostic, pulls from global queue).
     """
     load_dotenv()
     from andera.worker import run_worker
