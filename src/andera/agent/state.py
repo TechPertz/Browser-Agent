@@ -87,6 +87,8 @@ class AgentState(TypedDict, total=False):
     plan_cache_hit: bool              # telemetry
     task_type: str                    # set by classifier in Phase 2.75
     last_tool_error: str              # set when act's tool call errored; verify reads it
+    extract_errors: list[str]         # schema validation errors from the last extract attempt
+    judge_feedback: str               # judge's reason fed back into extract on retry
 
     # --- control + result ---
     status: Status

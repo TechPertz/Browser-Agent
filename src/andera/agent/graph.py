@@ -30,6 +30,7 @@ from .nodes import (
     make_verify_node,
     route_after_act,
     route_after_extract,
+    route_after_judge,
     route_after_plan,
     route_after_verify,
 )
@@ -66,7 +67,11 @@ def build_graph(deps: AgentDeps):
         route_after_extract,
         {"judge": "judge", "failed": END},
     )
-    g.add_edge("judge", END)
+    g.add_conditional_edges(
+        "judge",
+        route_after_judge,
+        {"extract": "extract", "end": END},
+    )
     return g
 
 

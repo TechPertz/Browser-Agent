@@ -103,12 +103,67 @@ def verifier_user(
     )
 
 
-def extractor_user(observations: list[dict[str, Any]], schema: dict[str, Any]) -> str:
-    payload = json.dumps(observations, ensure_ascii=False)[:8000]
-    return (
-        f"Target schema:\n{json.dumps(schema, ensure_ascii=False)}\n\n"
-        f"Observations (truncated):\n{payload}"
-    )
+def _project_observation(obs: dict[str, Any]) -> dict[str, Any]:
+    """Shrink an observation to just the fields an extractor benefits from.
+
+    Keeps extract entries fully (that's per-item data). For snapshots,
+    keep url+title+trimmed text + interactive element *names* only.
+    """
+    kind = obs.get("kind")
+    data = obs.get("data") or {}
+    if kind == "extract":
+        return {"kind": "extract", "data": data}
+    if kind and kind.endswith(".abstract"):
+        return {"kind": kind, "summary": obs.get("summary", "")}
+    if kind == "snapshot":
+        return {
+            "kind": "snapshot",
+            "url": data.get("url"),
+            "title": data.get("title"),
+            "inner_text": (data.get("inner_text") or "")[:2000],
+            "interactive_names": [
+                i.get("name") for i in (data.get("interactive") or [])[:30]
+            ],
+        }
+    return {"kind": kind, "data": data}
+
+
+def extractor_user(
+    observations: list[dict[str, Any]],
+    schema: dict[str, Any],
+    *,
+    judge_feedback: str | None = None,
+    prior_extraction: dict[str, Any] | None = None,
+    validation_errors: list[str] | None = None,
+) -> str:
+    """Build the extractor user message.
+
+    Projects observations to a bounded, structure-preserving form so
+    we never slice a JSON blob mid-object. Appends judge feedback and
+    validation errors for retry cycles.
+    """
+    projected = [_project_observation(o) for o in observations]
+    # Send tail-first: freshest observations first so truncation drops
+    # least-recent context instead of most-recent (which the extractor
+    # usually needs).
+    projected = list(reversed(projected))
+    parts = [
+        f"Target schema:\n{json.dumps(schema, ensure_ascii=False)}",
+        f"Observations (most-recent first):\n{json.dumps(projected, ensure_ascii=False)[:12000]}",
+    ]
+    if prior_extraction is not None:
+        parts.append(
+            "Your previous extraction (refine, do NOT restart):\n"
+            f"{json.dumps(prior_extraction, ensure_ascii=False)}"
+        )
+    if validation_errors:
+        parts.append(
+            "Schema validation errors to fix:\n- "
+            + "\n- ".join(validation_errors)
+        )
+    if judge_feedback:
+        parts.append(f"Judge feedback to address:\n{judge_feedback}")
+    return "\n\n".join(parts)
 
 
 def judge_user(task_prompt: str, extracted: dict[str, Any],

@@ -281,25 +281,73 @@ def make_verify_node(deps: AgentDeps):
     return verify
 
 
+EXTRACT_RETRY_MAX = 2  # total attempts = 1 + EXTRACT_RETRY_MAX
+
+
+def _schema_errors(parsed: Any, schema: dict[str, Any]) -> list[str]:
+    """Return human-readable schema validation errors, [] if valid."""
+    try:
+        from jsonschema import Draft202012Validator
+    except ImportError:
+        # jsonschema is a soft dep; if absent, fall back to required-key check.
+        if not isinstance(parsed, dict):
+            return [f"expected object, got {type(parsed).__name__}"]
+        missing = set(schema.get("required") or []) - set(parsed.keys())
+        return [f"missing required field: {k}" for k in missing]
+    if not isinstance(parsed, dict):
+        return [f"expected object, got {type(parsed).__name__}"]
+    errs = []
+    for e in Draft202012Validator(schema).iter_errors(parsed):
+        path = ".".join(str(p) for p in e.absolute_path) or "(root)"
+        errs.append(f"{path}: {e.message}")
+    return errs
+
+
 def make_extract_node(deps: AgentDeps):
     async def extract(state: AgentState) -> dict:
         schema = state.get("extract_schema") or {}
         if not schema:
             return {"extracted": {}, "status": "judging"}
-        messages = [
-            {"role": "system", "content": prompts.EXTRACTOR_SYSTEM},
-            {"role": "user", "content": prompts.extractor_user(
-                state.get("observations") or [], schema,
-            )},
-        ]
-        out = await deps.extractor.complete(messages=messages, schema=schema)
-        parsed = out.get("parsed")
-        if parsed is None:
-            try:
-                parsed = _parse_json(out["content"])
-            except Exception as e:
-                return {"status": "failed", "error": f"extract parse: {e}"}
-        return {"extracted": parsed, "status": "judging"}
+
+        observations = state.get("observations") or []
+        judge_feedback = state.get("judge_feedback")
+        parsed: Any = None
+        errors: list[str] = []
+
+        # Retry loop: initial attempt + EXTRACT_RETRY_MAX re-asks on
+        # schema-invalid output, each time showing the prior attempt
+        # and the specific validation errors.
+        for attempt in range(EXTRACT_RETRY_MAX + 1):
+            user_msg = prompts.extractor_user(
+                observations,
+                schema,
+                judge_feedback=judge_feedback,
+                prior_extraction=parsed if attempt > 0 else None,
+                validation_errors=errors if attempt > 0 else None,
+            )
+            messages = [
+                {"role": "system", "content": prompts.EXTRACTOR_SYSTEM},
+                {"role": "user", "content": user_msg},
+            ]
+            out = await deps.extractor.complete(messages=messages, schema=schema)
+            parsed = out.get("parsed")
+            if parsed is None:
+                try:
+                    parsed = _parse_json(out["content"])
+                except Exception as e:
+                    errors = [f"JSON parse: {e}"]
+                    continue
+            errors = _schema_errors(parsed, schema)
+            if not errors:
+                break
+
+        return {
+            "extracted": parsed or {},
+            "extract_errors": errors,
+            "status": "judging",
+            # Clear feedback so a re-entry from judge doesn't loop on stale text.
+            "judge_feedback": None,
+        }
 
     return extract
 
@@ -321,9 +369,31 @@ def make_judge_node(deps: AgentDeps):
             reason = v.get("reason", "")
         except Exception:
             verdict, reason = "uncertain", "judge output unparsable"
+
+        # On fail/uncertain, route back to extract once with the judge's
+        # reason so the extractor can correct itself from the already-
+        # captured evidence. Bounded by reflect_count so we never loop.
+        if verdict in ("fail", "uncertain"):
+            rc = state.get("reflect_count", 0)
+            if rc < REFLECT_MAX:
+                return {
+                    "verdict": verdict,
+                    "verdict_reason": reason,
+                    "judge_feedback": reason or "verdict was " + verdict,
+                    "reflect_count": rc + 1,
+                    "status": "extracting",  # route_after_judge sees this
+                }
+
         return {"verdict": verdict, "verdict_reason": reason, "status": "done"}
 
     return judge
+
+
+def route_after_judge(state: AgentState) -> str:
+    """If judge requested a retry, go back to extract; else END."""
+    if state.get("status") == "extracting":
+        return "extract"
+    return "end"
 
 
 # --- routers (conditional edge fns) ---
