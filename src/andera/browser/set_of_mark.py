@@ -26,6 +26,14 @@ class Mark:
     y: int
     w: int
     h: int
+    # Structural metadata — stable across rows of the same task (e.g.
+    # `/pull/\d+` href pattern is identical on every GitHub repo). These
+    # feed the descriptor matcher so cached plans replay cross-row
+    # without calling vision again.
+    href: str = ""
+    placeholder: str = ""
+    tag: str = ""
+    viewport_region: str = ""   # top-left | top-center | ... | header | main | footer
     in_shadow: bool = False
     in_iframe: bool = False
 
@@ -97,6 +105,39 @@ _OVERLAY_JS = r"""
     layer.appendChild(box);
   };
 
+  // Landmark ancestors give stable region hints when CSS grid layout
+  // fails (unlabeled icon-only buttons in the top-right corner are
+  // common — "header button in top-right" generalizes across sites).
+  const landmarkOf = (el) => {
+    let node = el;
+    while (node && node.tagName) {
+      const t = node.tagName.toLowerCase();
+      if (t === 'header' || t === 'footer' || t === 'nav' || t === 'main' || t === 'aside') {
+        return t;
+      }
+      if (node.getAttribute) {
+        const role = node.getAttribute('role');
+        if (role === 'banner') return 'header';
+        if (role === 'contentinfo') return 'footer';
+        if (role === 'navigation') return 'nav';
+        if (role === 'main') return 'main';
+      }
+      node = node.parentElement || (node.getRootNode && node.getRootNode().host);
+    }
+    return '';
+  };
+
+  const regionOf = (r) => {
+    // 3x3 viewport grid. Midpoint of the element decides the cell.
+    const vw = window.innerWidth || 1280;
+    const vh = window.innerHeight || 720;
+    const mx = r.x + r.width / 2;
+    const my = r.y + r.height / 2;
+    const col = mx < vw / 3 ? 'left' : (mx < 2 * vw / 3 ? 'center' : 'right');
+    const row = my < vh / 3 ? 'top' : (my < 2 * vh / 3 ? 'middle' : 'bottom');
+    return `${row}-${col}`;
+  };
+
   const walk = (root, offsetX = 0, offsetY = 0, inShadow = false, inIframe = false) => {
     const nodes = root.querySelectorAll(selectors);
     for (const el of nodes) {
@@ -104,6 +145,8 @@ _OVERLAY_JS = r"""
       seen.add(el);
       if (!isVisible(el)) continue;
       const r = el.getBoundingClientRect();
+      const landmark = landmarkOf(el);
+      const region = landmark || regionOf(r);
       const mark = {
         mark_id: counter,
         role: roleOf(el),
@@ -112,6 +155,10 @@ _OVERLAY_JS = r"""
         y: Math.round(r.y + offsetY),
         w: Math.round(r.width),
         h: Math.round(r.height),
+        href: el.getAttribute('href') || '',
+        placeholder: el.getAttribute('placeholder') || '',
+        tag: el.tagName ? el.tagName.toLowerCase() : '',
+        viewport_region: region,
         in_shadow: inShadow,
         in_iframe: inIframe,
       };
@@ -165,6 +212,10 @@ async def mark_page(page: Page) -> dict[int, Mark]:
             y=int(r["y"]),
             w=int(r["w"]),
             h=int(r["h"]),
+            href=r.get("href", "") or "",
+            placeholder=r.get("placeholder", "") or "",
+            tag=r.get("tag", "") or "",
+            viewport_region=r.get("viewport_region", "") or "",
             in_shadow=bool(r.get("in_shadow")),
             in_iframe=bool(r.get("in_iframe")),
         )

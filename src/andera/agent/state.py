@@ -91,6 +91,20 @@ class AgentState(TypedDict, total=False):
     extract_errors: list[str]         # schema validation errors from the last extract attempt
     judge_feedback: str               # judge's reason fed back into extract on retry
 
+    # --- Set-of-Mark visual grounding state ---
+    # `last_marks` holds the current page's numbered elements (from the
+    # most recent `annotate` action). The `visual_do` handler reads
+    # these to match a cached descriptor or to feed the vision LMM.
+    # `last_annotated_sha` points to the annotated screenshot blob; the
+    # act node reads those bytes when calling vision. Storing sha (not
+    # bytes) keeps LangGraph checkpoints small.
+    # `resolved_plan` mirrors `plan` with descriptors filled in — after
+    # a successful sample we write this back to the PlanCache so every
+    # subsequent input row replays without vision.
+    last_marks: list[dict[str, Any]]
+    last_annotated_sha: str
+    resolved_plan: list[dict[str, Any]]
+
     # --- control + result ---
     status: Status
     verdict: Literal["pass", "fail", "uncertain"]

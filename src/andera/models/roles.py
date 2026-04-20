@@ -15,3 +15,6 @@ class Role(str, Enum):
     NAVIGATOR = "navigator"
     EXTRACTOR = "extractor"
     JUDGE = "judge"
+    # Multimodal role for Set-of-Mark visual resolution. Picks a mark_id
+    # and emits a structural descriptor that survives across input rows.
+    VISION = "vision"

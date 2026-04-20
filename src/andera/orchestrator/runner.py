@@ -79,6 +79,9 @@ def _build_deps(
     browser_tools: BrowserTools,
     plan_cache: PlanCache,
 ) -> AgentDeps:
+    vision = None
+    if getattr(profile.models, "vision", None) is not None:
+        vision = get_model(Role.VISION, profile)
     return AgentDeps(
         planner=get_model(Role.PLANNER, profile),
         navigator=get_model(Role.NAVIGATOR, profile),
@@ -88,6 +91,7 @@ def _build_deps(
         plan_cache=plan_cache,
         # Haiku classifier — reuse the extractor model (cheapest tier).
         classifier=get_model(Role.EXTRACTOR, profile),
+        vision=vision,
     )
 
 

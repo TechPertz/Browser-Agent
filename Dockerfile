@@ -42,7 +42,7 @@ CMD ["uv", "run", "uvicorn", "andera.api.app:app", \
 ########################################
 # Agent (includes Chromium)
 ########################################
-FROM mcr.microsoft.com/playwright/python:v1.47.0-jammy AS agent
+FROM mcr.microsoft.com/playwright/python:v1.58.0-jammy AS agent
 WORKDIR /app
 
 # --- uv ---

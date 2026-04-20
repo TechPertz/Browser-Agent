@@ -19,6 +19,10 @@ class RolesConfig(BaseModel):
     navigator: ModelSpec
     extractor: ModelSpec
     judge: ModelSpec
+    # Optional — visual_do is a no-op without a multimodal vision model.
+    # Defaults to None so existing profiles (and tests) that don't
+    # configure vision don't break.
+    vision: ModelSpec | None = None
 
 
 class Viewport(BaseModel):
@@ -114,4 +118,68 @@ def load_profile(path: str | Path | None = None) -> Profile:
         raise FileNotFoundError(f"profile not found at {p.resolve()}")
     with p.open() as f:
         raw = yaml.safe_load(f) or {}
+    raw = _apply_env_overrides(raw)
     return Profile.model_validate(raw)
+
+
+def _apply_env_overrides(raw: dict) -> dict:
+    """Let docker-compose / k8s flip backends via env WITHOUT editing
+    profile.yaml (which would break local-dev SQLite defaults).
+
+    Recognized vars:
+      ANDERA_QUEUE_BACKEND            -> queue.backend
+      ANDERA_QUEUE_DISTRIBUTED        -> queue.distributed  (truthy)
+      ANDERA_REDIS_URL                -> queue.redis_url
+      ANDERA_METADATA_BACKEND         -> storage.metadata.backend
+      ANDERA_POSTGRES_URL             -> storage.metadata.postgres_url
+      ANDERA_BACKEND                  -> convenience: sets BOTH
+                                         queue.backend=redis AND
+                                         storage.metadata.backend=postgres
+                                         (when value is "postgres")
+    """
+    import os
+    raw = dict(raw)  # shallow copy
+    q = dict(raw.get("queue") or {})
+    s = dict(raw.get("storage") or {})
+    meta = dict((s.get("metadata") or {}))
+    br = dict(raw.get("browser") or {})
+
+    if "ANDERA_HEADLESS" in os.environ:
+        br["headless"] = os.environ["ANDERA_HEADLESS"].lower() in (
+            "1", "true", "yes", "on"
+        )
+    if "ANDERA_CONCURRENCY" in os.environ:
+        try:
+            br["concurrency"] = int(os.environ["ANDERA_CONCURRENCY"])
+        except ValueError:
+            pass
+
+    if os.environ.get("ANDERA_BACKEND") == "postgres":
+        # Convenience: flip both queue AND metadata to their production
+        # defaults. Explicit per-setting env vars below still take
+        # precedence if the operator needs to override granularly.
+        q["backend"] = "redis"
+        q["distributed"] = True
+        meta["backend"] = "postgres"
+
+    if "ANDERA_QUEUE_BACKEND" in os.environ:
+        q["backend"] = os.environ["ANDERA_QUEUE_BACKEND"]
+    if "ANDERA_QUEUE_DISTRIBUTED" in os.environ:
+        q["distributed"] = os.environ["ANDERA_QUEUE_DISTRIBUTED"].lower() in (
+            "1", "true", "yes", "on"
+        )
+    if "ANDERA_REDIS_URL" in os.environ:
+        q["redis_url"] = os.environ["ANDERA_REDIS_URL"]
+    if "ANDERA_METADATA_BACKEND" in os.environ:
+        meta["backend"] = os.environ["ANDERA_METADATA_BACKEND"]
+    if "ANDERA_POSTGRES_URL" in os.environ:
+        meta["postgres_url"] = os.environ["ANDERA_POSTGRES_URL"]
+
+    if q:
+        raw["queue"] = q
+    if meta:
+        s["metadata"] = meta
+        raw["storage"] = s
+    if br:
+        raw["browser"] = br
+    return raw

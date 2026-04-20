@@ -14,12 +14,17 @@ def profile():
 
 
 def test_get_model_returns_chat_model_protocol(profile):
-    m = get_model(Role.PLANNER, profile)
+    # NAVIGATOR goes through LiteLLM; PLANNER / VISION now use the direct
+    # Anthropic adapter (see registry._DIRECT_ROLES). Use NAVIGATOR here
+    # since this test asserts LiteLLM routing specifically.
+    m = get_model(Role.NAVIGATOR, profile)
     assert isinstance(m, ChatModel)
     assert isinstance(m, LiteLLMChatModel)
 
 
 def test_role_mapping_uses_profile(profile):
+    # Both adapters expose `.model`, but they're different concrete classes
+    # — planner is AnthropicDirectModel, extractor is LiteLLMChatModel.
     planner = get_model(Role.PLANNER, profile)
     extractor = get_model(Role.EXTRACTOR, profile)
     assert planner.model == profile.models.planner.model
@@ -40,7 +45,9 @@ def test_model_cached(profile):
 
 
 async def test_complete_calls_litellm(profile):
-    m = get_model(Role.PLANNER, profile)
+    # Route through a LiteLLM-backed role; the test is about the
+    # LiteLLM adapter's shape, not about which role happens to use it.
+    m = get_model(Role.NAVIGATOR, profile)
     fake_resp = type(
         "R",
         (),

@@ -409,6 +409,19 @@ class LocalPlaywrightSession:
         except Exception:
             pass
 
+    async def type_mark(self, mark_id: int, value: str) -> None:
+        """Click the marked element then type into it. For text inputs,
+        selects existing content first so the typed value replaces
+        whatever was there (Playwright's fill-style semantics)."""
+        await self.click_mark(mark_id)
+        # Select-all before typing so we replace rather than append. Harmless
+        # on non-text targets where no selection exists.
+        try:
+            await self._page.keyboard.press("Meta+A" if self._page.context.browser else "Control+A")
+        except Exception:
+            pass
+        await self._page.keyboard.type(value, delay=25)
+
     async def close(self) -> None:
         try:
             await self._context.close()

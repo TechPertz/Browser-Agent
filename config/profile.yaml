@@ -6,6 +6,11 @@ models:
   navigator: { provider: anthropic, model: claude-sonnet-4-6 }
   extractor: { provider: anthropic, model: claude-haiku-4-5-20251001 }
   judge:     { provider: anthropic, model: claude-opus-4-7 }
+  # Vision resolver for Set-of-Mark visual grounding. Only fires on cache
+  # miss (first sample of a unique task) — subsequent samples replay the
+  # cached structural descriptor with zero LLM calls. Opus 4.7 for first-
+  # pass reliability; switch to Sonnet/Haiku once cache hit rate is high.
+  vision:    { provider: anthropic, model: claude-opus-4-7 }
 
 browser:
   backend: local              # local | browserbase

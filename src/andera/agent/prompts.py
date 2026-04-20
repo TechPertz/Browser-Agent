@@ -48,6 +48,18 @@ Each step MUST be one of:
       # Typical pattern: `search` -> `goto_search_result` -> `screenshot` ->
       # repeat for the next item.
   - {"action": "extract", "target": "fields"}   # extracts per extract_schema
+  - {"action": "visual_do", "intent": "<natural language target>", "value": "<text>"?}
+      # PREFERRED for any click or typing whose target depends on what the
+      # current page actually shows — links whose URL/title differ per input
+      # row, buttons without stable selectors, search boxes, dropdown items.
+      # At runtime, the act node annotates the page with numbered boxes and
+      # a vision model picks the exact element. On the FIRST sample of a
+      # task, vision resolves and caches a structural descriptor (e.g. "the
+      # first link whose href matches /pull/\\d+"); on subsequent samples
+      # the descriptor replays deterministically with no LLM call. Use this
+      # instead of `click` unless you genuinely know the exact selector.
+      # Include `value` for typing actions ("type the author's name into
+      # the search box" → intent describes the box, value is the text).
   - {"action": "done", "target": "ok"}
 
 Iteration pattern (important):
@@ -84,9 +96,73 @@ Extraction guidance:
     evidence, file things, navigate a flow) — no "extract" step is needed;
     end with "done" once the evidence is captured.
 
+Prefer `visual_do` over `click` / `type` whenever the target element can't be
+pinned with an exact stable selector. Examples where `visual_do` is the right
+choice: "the first closed PR in the list", "the sign-in button", "the search
+box", "the author's profile link". Examples where `click` with a CSS selector
+is still right: "a[href='/login']", "#submit-btn". The `visual_do` step also
+makes repeat-for-every-row tasks cheap — the first sample resolves visually,
+every subsequent row replays from a structural descriptor (e.g. role=a,
+href matches /pull/\\d+) with zero extra LLM calls.
+
 Include at least one screenshot BEFORE and AFTER any click that changes the
 page so evidence is captured. Prefer the simplest plan. Output ONLY the JSON
 array of steps."""
+
+
+VISION_NAVIGATOR_SYSTEM = """You are the Visual Resolver for a browser agent.
+
+You receive:
+  - an `intent`: a natural-language description of what to click or type into
+  - an annotated screenshot of the current page. Every interactive element
+    (links, buttons, inputs, role=button, etc.) has a colored numbered box
+    drawn over it. The number is its `mark_id`.
+  - a JSON list of those marks with their {mark_id, role, name, href,
+    placeholder, viewport_region, tag} — you can see the same info visually
+    AND structurally.
+
+Your job is TWO things:
+
+1. Pick the single `mark_id` that best satisfies the intent.
+2. Return a STRUCTURAL descriptor that identifies the same kind of element
+   on OTHER pages of the same site — the exact selection you make now will
+   be cached and replayed against different input rows (different repos,
+   users, dates). Content-specific matching will FAIL on replay.
+
+Descriptor rules (critical):
+
+  - Prefer `href_pattern` (a regex on the URL) for links. On
+    github.com/ORG/REPO/pulls, the first PR link looks like
+    "/ORG/REPO/pull/9876". The SAME-KIND link on a different repo is
+    "/OTHER/OTHER/pull/42". Generalize with `/pull/\\d+` — NOT the
+    full URL, NOT the PR title.
+  - Use `name_pattern` ONLY for labels that stay identical across variants
+    of the site: "Sign in", "Search", "Next". Anything like PR titles,
+    usernames, article headlines, dates — DO NOT put in the descriptor.
+  - Use `placeholder_pattern` for inputs whose visible hint text is
+    stable (e.g. "Search", "Enter your email").
+  - Use `viewport_region` (top-left | top-center | top-right | middle-left
+    | ... | bottom-right | header | footer | nav | main) as a fallback for
+    unlabeled icon buttons where role alone is ambiguous.
+  - `role` is always required — it narrows the candidate set immediately.
+
+Return JSON matching:
+  {
+    "mark_id": <int>,
+    "descriptor": {
+      "role": "<role>",
+      "href_pattern": "<regex>"?,
+      "name_pattern": "<regex>"?,
+      "placeholder_pattern": "<regex>"?,
+      "viewport_region": "<region>"?
+    },
+    "rationale": "<one sentence — why this mark, why this descriptor>"
+  }
+
+If no mark satisfies the intent, pick the mark_id whose name or href most
+closely implies the intent and explain in the rationale. Never return a
+mark_id that isn't in the list.
+"""
 
 
 NAVIGATOR_SYSTEM = """You are the Navigator. Given the current DOM snapshot and the

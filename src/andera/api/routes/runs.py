@@ -41,18 +41,44 @@ def _schema_from_fields(
     """
     if not fields or not fields.strip():
         return {}
+    # Accept either "a, b, c" on one line or "a: desc\nb: desc" across lines.
+    # Split on newlines first, then fall back to commas within each line.
+    raw_tokens: list[str] = []
+    for line in fields.replace("\r", "").split("\n"):
+        for piece in line.split(","):
+            piece = piece.strip()
+            if piece:
+                raw_tokens.append(piece)
     seen: set[str] = set()
+    props: dict[str, dict[str, Any]] = {}
     names: list[str] = []
-    for raw in fields.split(","):
-        name = raw.strip()
-        if name and name not in seen:
-            seen.add(name)
-            names.append(name)
+    for tok in raw_tokens:
+        # `name: description` — description becomes JSON-Schema `description`
+        # so the extractor prompt sees it. Without this split, "author:
+        # GitHub username" became the field name, which is unusable.
+        if ":" in tok:
+            name_part, _, desc = tok.partition(":")
+            name = name_part.strip()
+            description = desc.strip() or None
+        else:
+            name = tok
+            description = None
+        # Sanitize: valid JSON property keys are arbitrary strings, but we
+        # want downstream CSV columns + LLM stability — keep alphanum + _.
+        name = "".join(c if c.isalnum() or c in "_-" else "_" for c in name).strip("_")
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        names.append(name)
+        prop: dict[str, Any] = {"type": ["string", "null"]}
+        if description:
+            prop["description"] = description
+        props[name] = prop
     if not names:
         return {}
     item_schema = {
         "type": "object",
-        "properties": {n: {"type": ["string", "null"]} for n in names},
+        "properties": props,
         "required": names,
     }
     if multi_item:

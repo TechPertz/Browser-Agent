@@ -88,6 +88,23 @@ class ExtractArgs(BaseModel):
     json_schema: dict[str, Any]
 
 
+class AnnotateArgs(BaseModel):
+    """Draw numbered overlay boxes on every interactive element and
+    capture the resulting screenshot. Used as the setup step for any
+    visual_do — the act node calls this, stores the marks list in
+    state, then asks the vision LMM to pick a mark_id."""
+    name: str = "annotated"
+
+
+class ClickMarkArgs(BaseModel):
+    mark_id: int
+
+
+class TypeMarkArgs(BaseModel):
+    mark_id: int
+    value: str
+
+
 class BrowserTools:
     """Bind a set of agent-facing browser tools to one BrowserSession."""
 
@@ -220,3 +237,32 @@ class BrowserTools:
             return await self._session.snapshot()
 
         return await invoke("browser.snapshot", {}, run)
+
+    async def annotate(self, args: AnnotateArgs) -> ToolResult:
+        """Set-of-Mark overlay + screenshot. Returns the artifact + marks
+        list in ToolResult.data. Caller (act node's visual_do handler)
+        feeds the marks into the vision resolver or the descriptor
+        matcher to pick which mark to click."""
+        async def run():
+            art, marks = await self._session.mark_and_screenshot(args.name)
+            return {
+                "artifact": art.model_dump(mode="json"),
+                "marks": marks,
+                "count": len(marks),
+            }
+
+        return await invoke("browser.annotate", args.model_dump(), run)
+
+    async def click_mark(self, args: ClickMarkArgs) -> ToolResult:
+        async def run():
+            await self._session.click_mark(args.mark_id)
+            return {"mark_id": args.mark_id}
+
+        return await invoke("browser.click_mark", args.model_dump(), run)
+
+    async def type_mark(self, args: TypeMarkArgs) -> ToolResult:
+        async def run():
+            await self._session.type_mark(args.mark_id, args.value)
+            return {"mark_id": args.mark_id, "chars": len(args.value)}
+
+        return await invoke("browser.type_mark", args.model_dump(mode="json"), run)

@@ -8,9 +8,23 @@ provider per LiteLLM's convention (e.g. `anthropic/claude-opus-4-7`).
 from __future__ import annotations
 
 import json
+import os
+import traceback
 from typing import Any
 
 import litellm
+
+# Opt-in verbose LiteLLM logging. Set `LITELLM_DEBUG=1` in .env (or
+# export it) and restart the API to see full request/response payloads
+# — invaluable for diagnosing silent hangs where LiteLLM only prints
+# "Give Feedback / Get Help" banners with no actual error text.
+if os.environ.get("LITELLM_DEBUG", "").lower() in ("1", "true", "yes", "on"):
+    try:
+        litellm._turn_on_debug()
+    except Exception:
+        # Older litellm versions exposed this via a different path;
+        # fall back to setting the verbose flag directly.
+        litellm.set_verbose = True  # type: ignore[attr-defined]
 
 
 class LiteLLMChatModel:
@@ -71,12 +85,36 @@ class LiteLLMChatModel:
             }
         params.update(kwargs)
 
-        resp = await litellm.acompletion(**params)
+        try:
+            resp = await litellm.acompletion(**params)
+        except Exception as e:
+            # LiteLLM's own logging prints "Give Feedback" banners without
+            # the actual error, which makes silent hangs unfixable. Surface
+            # the exception class + message + truncated request so the
+            # parent node's logger catches it.
+            msg = str(e)[:500]
+            print(
+                f"[LiteLLM adapter] {type(e).__name__}: {msg}\n"
+                f"  model={self._model_string} has_schema={schema is not None} "
+                f"messages={len(messages)}",
+                flush=True,
+            )
+            if os.environ.get("LITELLM_DEBUG"):
+                traceback.print_exc()
+            raise
         choice = resp.choices[0]
         content = choice.message.content or ""
         out: dict[str, Any] = {"role": "assistant", "content": content}
         if schema is not None:
-            out["parsed"] = json.loads(content)
+            try:
+                out["parsed"] = json.loads(content)
+            except Exception as e:
+                print(
+                    f"[LiteLLM adapter] JSON parse failed: {e}\n"
+                    f"  raw content (first 500): {content[:500]!r}",
+                    flush=True,
+                )
+                raise
         usage = getattr(resp, "usage", None)
         if usage is not None:
             out["usage"] = {

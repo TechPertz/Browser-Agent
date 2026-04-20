@@ -93,6 +93,9 @@ services:
       ANDERA_REDIS_URL: redis://redis:6379/0
       ANDERA_POSTGRES_URL: postgresql://andera:andera@postgres:5432/andera
       ANDERA_BACKEND: postgres
+      # Containers have no X display — Chromium must run headless.
+      ANDERA_HEADLESS: "true"
+      ANDERA_CONCURRENCY: "2"
     deploy:
       replicas: 3
     depends_on:

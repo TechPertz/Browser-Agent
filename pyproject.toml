@@ -19,6 +19,7 @@ dependencies = [
     "jinja2>=3.1",
     "python-multipart>=0.0.9",
     "jsonschema>=4.20",
+    "anthropic>=0.96.0",
 ]
 
 [project.optional-dependencies]
@@ -34,6 +35,7 @@ redis = [
 postgres = [
     "asyncpg>=0.29",
     "langgraph-checkpoint-postgres>=2.0",
+    "psycopg[binary]>=3.1",
 ]
 
 [project.scripts]

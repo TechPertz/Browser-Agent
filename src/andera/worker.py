@@ -109,6 +109,9 @@ class WorkerNode:
                 pass
 
     def _build_deps(self, session) -> AgentDeps:
+        vision = None
+        if getattr(self.profile.models, "vision", None) is not None:
+            vision = get_model(Role.VISION, self.profile)
         return AgentDeps(
             planner=get_model(Role.PLANNER, self.profile),
             navigator=get_model(Role.NAVIGATOR, self.profile),
@@ -117,6 +120,7 @@ class WorkerNode:
             browser=BrowserTools(session),
             plan_cache=self.plan_cache,
             classifier=get_model(Role.EXTRACTOR, self.profile),
+            vision=vision,
         )
 
     async def _process_one(self, job: dict[str, Any]) -> dict[str, Any]:
@@ -273,6 +277,9 @@ async def _execute_sample(
                     return result
             except Exception:
                 pass
+        vision = None
+        if getattr(profile.models, "vision", None) is not None:
+            vision = get_model(Role.VISION, profile)
         deps = AgentDeps(
             planner=get_model(Role.PLANNER, profile),
             navigator=get_model(Role.NAVIGATOR, profile),
@@ -281,6 +288,7 @@ async def _execute_sample(
             browser=BrowserTools(session),
             plan_cache=plan_cache,
             classifier=get_model(Role.EXTRACTOR, profile),
+            vision=vision,
         )
         initial = {
             "run_id": run_id,

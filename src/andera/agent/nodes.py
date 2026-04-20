@@ -8,14 +8,19 @@ hexagonal rule: nodes depend on Protocols, not concretions.
 
 from __future__ import annotations
 
+import base64
 import json
+import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from andera.contracts import ChatModel
 from andera.tools.browser import (
+    AnnotateArgs,
     BrowserTools,
     ClickArgs,
+    ClickMarkArgs,
     ExtractArgs,
     GotoArgs,
     ScreenshotArgs,
@@ -23,6 +28,7 @@ from andera.tools.browser import (
     ScrollToArgs,
     SearchArgs,
     TypeArgs,
+    TypeMarkArgs,
     VisitEachLinkArgs,
 )
 
@@ -49,6 +55,11 @@ PLAN_MAX = 3
 NON_DOM_CHANGING_ACTIONS = {
     "screenshot", "screenshot_all", "visit_each_link",
     "scroll", "scroll_to", "extract", "search",
+    # `annotate` draws an overlay (pointerEvents: none) — the DOM that
+    # matters hasn't changed. visual_do and click_mark / type_mark ARE
+    # DOM-changing via the resulting click/type, so they go through
+    # LLM verify like a normal click.
+    "annotate",
     # goto_search_result DOES change the page — but the change is a
     # navigation, which is handled like `goto`. Exclude from fast-path.
 }
@@ -63,25 +74,33 @@ ALLOWED_ACTIONS = sorted({
     "scroll", "scroll_to",
     "visit_each_link",
     "search", "goto_search_result",
+    # Set-of-Mark visual grounding. `visual_do` is the preferred primitive
+    # for any click/type whose target depends on page content — the act
+    # node annotates + resolves via vision (cache miss) or descriptor
+    # match (cache hit). click_mark/type_mark exist for completeness if
+    # the planner wants to pin a mark_id directly (rarely needed).
+    "visual_do", "annotate", "click_mark", "type_mark",
     "extract", "done",
 })
 
 # Response schema the planner MUST satisfy. Wrapped in a top-level
 # object because some providers (incl. Anthropic through LiteLLM)
 # don't support top-level array outputs in strict JSON mode.
+# Planner schema. Lists every field an action might emit so strict JSON
+# mode actually surfaces them — Anthropic will ONLY generate keys that
+# appear in `properties`. Without `url`/`selector`/`query` here, every
+# step came out as `{"action": "goto"}` with no target and failed
+# instantly. Do NOT add `additionalProperties: false` — that combo is
+# what made Anthropic hang for 60s+ in earlier iterations.
 PLAN_RESPONSE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "steps": {
             "type": "array",
-            "minItems": 1,
-            "maxItems": 40,
             "items": {
                 "type": "object",
                 "properties": {
                     "action": {"type": "string", "enum": ALLOWED_ACTIONS},
-                    # Loose string fields — each action uses a subset; the
-                    # act node's alias resolution picks whichever's present.
                     "url": {"type": "string"},
                     "target": {"type": "string"},
                     "selector": {"type": "string"},
@@ -89,25 +108,209 @@ PLAN_RESPONSE_SCHEMA: dict[str, Any] = {
                     "value": {"type": "string"},
                     "name": {"type": "string"},
                     "path": {"type": "string"},
-                    "mode": {"type": "string", "enum": ["viewport", "full"]},
+                    "mode": {"type": "string"},
                     "folder": {"type": "string"},
                     "query": {"type": "string"},
                     "url_pattern": {"type": "string"},
                     "url_filter": {"type": "string"},
                     "name_template": {"type": "string"},
-                    "limit": {"type": "integer", "minimum": 1, "maximum": 50},
-                    "index": {"type": "integer", "minimum": 0, "maximum": 49},
+                    "limit": {"type": "integer"},
+                    "index": {"type": "integer"},
+                    # Set-of-Mark fields.
+                    "intent": {"type": "string"},   # visual_do: NL target
+                    "mark_id": {"type": "integer"}, # click_mark / type_mark
                     "rationale": {"type": "string"},
                 },
                 "required": ["action"],
-                "additionalProperties": False,
             },
         }
     },
     "required": ["steps"],
-    "additionalProperties": False,
     "title": "AgentPlan",
 }
+
+
+# Vision resolver schema. Intentionally permissive on `descriptor` — vision
+# picks WHICHEVER structural property identifies the element (href regex for
+# links, name regex for branded CTAs, placeholder for search inputs,
+# viewport_region as last resort). Only `role` is required because every
+# mark has one.
+VISION_RESPONSE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "mark_id": {"type": "integer"},
+        "descriptor": {
+            "type": "object",
+            "properties": {
+                "role": {"type": "string"},
+                "href_pattern": {"type": "string"},
+                "name_pattern": {"type": "string"},
+                "placeholder_pattern": {"type": "string"},
+                "viewport_region": {"type": "string"},
+            },
+            "required": ["role"],
+        },
+        "rationale": {"type": "string"},
+    },
+    "required": ["mark_id", "descriptor"],
+    "title": "VisualResolve",
+}
+
+
+def _filter_by_descriptor(
+    marks: list[dict[str, Any]], desc: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Return marks matching every non-empty descriptor field. Order
+    preserved (DOM order), so `ordinal` indexing is deterministic."""
+    out: list[dict[str, Any]] = []
+    role = desc.get("role") or ""
+    hrefp = desc.get("href_pattern") or ""
+    namep = desc.get("name_pattern") or ""
+    placep = desc.get("placeholder_pattern") or ""
+    region = desc.get("viewport_region") or ""
+    for m in marks:
+        if role and m.get("role") != role:
+            continue
+        if hrefp:
+            try:
+                if not re.search(hrefp, m.get("href") or ""):
+                    continue
+            except re.error:
+                # A bad regex from vision shouldn't poison replay — treat
+                # as no-filter-on-this-field. The next-sample descriptor
+                # rewrite will replace it with a valid pattern.
+                pass
+        if namep:
+            try:
+                if not re.search(namep, m.get("name") or ""):
+                    continue
+            except re.error:
+                pass
+        if placep:
+            try:
+                if not re.search(placep, m.get("placeholder") or ""):
+                    continue
+            except re.error:
+                pass
+        if region and (m.get("viewport_region") or "") != region:
+            continue
+        out.append(m)
+    return out
+
+
+def _match_descriptor(
+    desc: dict[str, Any] | None, marks: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Resolve a cached descriptor to a concrete mark on the current page.
+
+    Returns None when the descriptor has no candidates (page changed
+    shape, element missing, A/B variant). Callers fall back to vision
+    and rewrite the cache entry.
+    """
+    if not desc:
+        return None
+    candidates = _filter_by_descriptor(marks, desc)
+    if not candidates:
+        return None
+    ordinal = int(desc.get("ordinal", 0))
+    if 0 <= ordinal < len(candidates):
+        return candidates[ordinal]
+    return None
+
+
+async def _vision_resolve(
+    intent: str,
+    image_path: str | Path,
+    marks: list[dict[str, Any]],
+    vision_model: ChatModel,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Ask the vision LMM to pick a mark + emit a structural descriptor.
+
+    Returns (chosen_mark, descriptor_hint_from_vision).
+
+    The image is sent as an Anthropic-style content block. LiteLLM
+    translates this shape to whatever the underlying provider needs —
+    no adapter changes required.
+    """
+    img_bytes = Path(image_path).read_bytes()
+    img_b64 = base64.b64encode(img_bytes).decode("ascii")
+    # Trim the marks list sent as text. The model also sees the image;
+    # duplicating 80 marks as JSON doubles input tokens for diminishing
+    # returns. 40 marks is plenty for a typical viewport.
+    marks_for_prompt = marks[:40]
+    user_blocks = [
+        {
+            "type": "text",
+            "text": (
+                f"Intent: {intent}\n\n"
+                f"Marks visible on page (JSON):\n"
+                f"{json.dumps(marks_for_prompt, ensure_ascii=False)}"
+            ),
+        },
+        {
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": "image/png",
+                "data": img_b64,
+            },
+        },
+    ]
+    messages = [
+        {"role": "system", "content": prompts.VISION_NAVIGATOR_SYSTEM},
+        {"role": "user", "content": user_blocks},
+    ]
+    out = await vision_model.complete(
+        messages=messages, schema=VISION_RESPONSE_SCHEMA,
+    )
+    parsed = out.get("parsed")
+    if not isinstance(parsed, dict):
+        parsed = _parse_json(out.get("content") or "{}")
+    mark_id = int(parsed.get("mark_id", -1))
+    by_id = {int(m["mark_id"]): m for m in marks}
+    mark = by_id.get(mark_id)
+    if mark is None:
+        # Vision hallucinated an id. Best we can do is the first mark
+        # matching the proposed descriptor's role, or the 0th overall.
+        desc = parsed.get("descriptor") or {}
+        candidates = _filter_by_descriptor(marks, desc) if desc else marks
+        mark = candidates[0] if candidates else marks[0]
+    descriptor = parsed.get("descriptor") or {"role": mark.get("role", "")}
+    return mark, descriptor
+
+
+def _descriptor_for(
+    mark: dict[str, Any],
+    marks: list[dict[str, Any]],
+    vision_hint: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Merge vision's proposed descriptor with ordinal disambiguation.
+
+    Vision supplies semantic intent (href_pattern / name_pattern /
+    viewport_region). We compute `ordinal` among marks that match the
+    non-ordinal fields so replay is deterministic when multiple
+    candidates satisfy the pattern.
+    """
+    hint = dict(vision_hint or {})
+    desc: dict[str, Any] = {"role": mark.get("role") or hint.get("role") or ""}
+    for k in ("href_pattern", "name_pattern", "placeholder_pattern", "viewport_region"):
+        v = hint.get(k)
+        if v:
+            desc[k] = v
+    # Resolve ordinal AMONG marks that match the other fields. If vision
+    # didn't give us any structural hint, fall back to ordinal-of-role
+    # only (less precise, but still deterministic for homogeneous pages).
+    candidates = _filter_by_descriptor(marks, desc)
+    try:
+        desc["ordinal"] = candidates.index(mark)
+    except ValueError:
+        # mark didn't match its own descriptor — happens when vision's
+        # pattern is too strict. Fall back to ordinal by role only.
+        desc["ordinal"] = 0
+        same_role = [m for m in marks if m.get("role") == desc["role"]]
+        if mark in same_role:
+            desc["ordinal"] = same_role.index(mark)
+    return desc
 
 
 @dataclass
@@ -120,6 +323,11 @@ class AgentDeps:
     browser: BrowserTools
     plan_cache: PlanCache | None = None
     classifier: ChatModel | None = None  # Haiku; if None, classifier node is a noop
+    # Multimodal model for Set-of-Mark vision resolution. None disables
+    # visual_do — act node raises a tool error if the planner emits one
+    # without vision wired. Keeps the legacy path alive for tasks that
+    # don't need visual grounding.
+    vision: ChatModel | None = None
 
 
 def _parse_json(text: str) -> Any:
@@ -413,6 +621,83 @@ def make_act_node(deps: AgentDeps):
                 name_template=name_tpl,
                 folder=folder,
             ))
+        elif action == "visual_do":
+            # SET-OF-MARK primary primitive. Annotate → resolve → act.
+            #
+            # The resolver tries `step["resolved"]` (a cached structural
+            # descriptor) first. On miss (cache-free first sample, or
+            # descriptor no longer matches because the page shape
+            # changed), it falls back to the vision LMM and rewrites
+            # step["resolved"] so the plan cache persists a generic
+            # descriptor that will work on other input rows.
+            intent = step.get("intent") or step.get("target") or ""
+            typed_value = step.get("value") or ""
+            ann = await deps.browser.annotate(AnnotateArgs(name=f"step_{idx:02d}_annotated"))
+            if ann.status != "ok":
+                r = ann
+            else:
+                marks = ann.data.get("marks") or []
+                art = ann.data.get("artifact") or {}
+                resolved = step.get("resolved")
+                chosen = _match_descriptor(resolved, marks)
+                if chosen is None:
+                    if deps.vision is None:
+                        from andera.contracts import ToolResult
+                        r = ToolResult(
+                            call_id=ann.call_id,
+                            tool_name="agent.visual_do",
+                            status="error",
+                            data={"intent": intent, "reason": "no_vision_model"},
+                            error=(
+                                "visual_do requires a vision model (profile "
+                                "models.vision) but none is configured, and "
+                                "no cached descriptor matched the current "
+                                "page. Configure vision or rewrite the plan "
+                                "to use text-grounded click/type."
+                            ),
+                        )
+                    else:
+                        try:
+                            chosen, vhint = await _vision_resolve(
+                                intent=intent,
+                                image_path=art.get("path") or "",
+                                marks=marks,
+                                vision_model=deps.vision,
+                            )
+                            # Write the generalized descriptor INTO the plan
+                            # step so that when the plan is cached at the end
+                            # of the sample, subsequent rows replay deterministically.
+                            step["resolved"] = _descriptor_for(chosen, marks, vhint)
+                        except Exception as e:
+                            from andera.contracts import ToolResult
+                            r = ToolResult(
+                                call_id=ann.call_id,
+                                tool_name="agent.visual_do",
+                                status="error",
+                                data={"intent": intent, "marks_count": len(marks)},
+                                error=f"vision_resolve failed: {e}",
+                            )
+                            chosen = None
+                if chosen is not None:
+                    mark_id = int(chosen.get("mark_id", -1))
+                    if typed_value:
+                        r = await deps.browser.type_mark(
+                            TypeMarkArgs(mark_id=mark_id, value=typed_value),
+                        )
+                    else:
+                        r = await deps.browser.click_mark(
+                            ClickMarkArgs(mark_id=mark_id),
+                        )
+        elif action == "annotate":
+            r = await deps.browser.annotate(AnnotateArgs(name=target or f"step_{idx:02d}_annotated"))
+        elif action == "click_mark":
+            mark_id = int(step.get("mark_id", step.get("index", -1)))
+            r = await deps.browser.click_mark(ClickMarkArgs(mark_id=mark_id))
+        elif action == "type_mark":
+            mark_id = int(step.get("mark_id", step.get("index", -1)))
+            r = await deps.browser.type_mark(
+                TypeMarkArgs(mark_id=mark_id, value=value),
+            )
         elif action == "extract":
             r = await deps.browser.extract(ExtractArgs(json_schema=state.get("extract_schema") or {}))
         elif action == "done":
@@ -727,6 +1012,30 @@ def make_judge_node(deps: AgentDeps):
                     "reflect_count": rc + 1,
                     "status": "extracting",  # route_after_judge sees this
                 }
+
+        # Sample passed — persist the resolved plan so subsequent input
+        # rows of the same task replay deterministically. The `plan` in
+        # state was mutated in-place by visual_do handlers to carry
+        # `resolved` descriptors on each step.
+        if verdict == "pass" and deps.plan_cache is not None:
+            try:
+                final_plan = state.get("plan") or []
+                has_resolved = any(
+                    isinstance(s, dict) and s.get("resolved") for s in final_plan
+                )
+                # Only overwrite the cache if we actually learned something
+                # visual — skip for text-grounded tasks that never went
+                # through visual_do.
+                if has_resolved:
+                    cache_key = plan_key(
+                        state.get("task_prompt", ""),
+                        state.get("extract_schema") or {},
+                        state.get("start_url"),
+                    )
+                    deps.plan_cache.put(cache_key, final_plan)
+            except Exception:
+                # Never fail a sample because cache write hiccuped.
+                pass
 
         return {"verdict": verdict, "verdict_reason": reason, "status": "done"}
 
