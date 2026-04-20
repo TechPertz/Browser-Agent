@@ -64,6 +64,14 @@ class VisitEachLinkArgs(BaseModel):
     folder: str | None = None
 
 
+class SearchArgs(BaseModel):
+    """Google search via the Serper API — bypasses the entire anti-bot
+    fight with Google/DDG/Bing landing pages. Returns structured JSON
+    (title, url, snippet) for the top N organic results."""
+    query: str
+    limit: int = 5
+
+
 class ExtractArgs(BaseModel):
     json_schema: dict[str, Any]
 
@@ -120,6 +128,47 @@ class BrowserTools:
             return await self._session.scroll_to(args.target)
 
         return await invoke("browser.scroll_to", args.model_dump(), run)
+
+    async def search(self, args: SearchArgs) -> ToolResult:
+        """Hit Serper (Google-results-as-JSON). Requires SERPER_API_KEY."""
+        async def run():
+            import os
+
+            import httpx
+
+            key = os.environ.get("SERPER_API_KEY")
+            if not key:
+                raise RuntimeError(
+                    "SERPER_API_KEY is not set in .env — add it or use a "
+                    "different search strategy"
+                )
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(
+                    "https://google.serper.dev/search",
+                    headers={
+                        "X-API-KEY": key,
+                        "Content-Type": "application/json",
+                    },
+                    json={"q": args.query, "num": args.limit},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+            organic = data.get("organic") or []
+            results = [
+                {
+                    "title": h.get("title") or "",
+                    "url": h.get("link") or "",
+                    "snippet": h.get("snippet") or "",
+                }
+                for h in organic[: args.limit]
+            ]
+            return {
+                "query": args.query,
+                "results": results,
+                "count": len(results),
+            }
+
+        return await invoke("browser.search", args.model_dump(), run)
 
     async def visit_each_link(self, args: VisitEachLinkArgs) -> ToolResult:
         async def run():

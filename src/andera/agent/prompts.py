@@ -34,6 +34,13 @@ Each step MUST be one of:
       # substring, visits each, screenshots it, captures a snapshot, returns
       # to the original page. ONE plan step replaces N manual click+screenshot
       # cycles. `{i}` / `{i:02d}` in name get substituted with the index.
+  - {"action": "search", "query": "<google query>", "limit": N}
+      # Runs the query against Google via the Serper API (JSON results).
+      # ALWAYS prefer this over goto-ing a search engine URL — search engines
+      # (Google, DuckDuckGo, Bing) block Playwright with consent walls and
+      # anti-bot pages. Results land as a search observation: a list of
+      # {title, url, snippet}. Follow up with a `goto` to whichever result
+      # URL matches the task (e.g. first one containing "linkedin.com/in/").
   - {"action": "extract", "target": "fields"}   # extracts per extract_schema
   - {"action": "done", "target": "ok"}
 

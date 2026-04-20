@@ -21,6 +21,7 @@ from andera.tools.browser import (
     ScreenshotArgs,
     ScrollArgs,
     ScrollToArgs,
+    SearchArgs,
     TypeArgs,
     VisitEachLinkArgs,
 )
@@ -47,7 +48,7 @@ PLAN_MAX = 3
 # burn through the reflection budget without doing anything useful.
 NON_DOM_CHANGING_ACTIONS = {
     "screenshot", "screenshot_all", "visit_each_link",
-    "scroll", "scroll_to", "extract",
+    "scroll", "scroll_to", "extract", "search",
 }
 
 
@@ -244,6 +245,12 @@ def make_act_node(deps: AgentDeps):
             r = await deps.browser.screenshot_all(
                 ScreenshotArgs(name=name, folder=folder),
             )
+        elif action == "search":
+            query = step.get("query") or step.get("q") or target
+            r = await deps.browser.search(SearchArgs(
+                query=query,
+                limit=int(step.get("limit", 5)),
+            ))
         elif action == "scroll":
             r = await deps.browser.scroll(ScrollArgs(amount=(target or value or "down")))
         elif action == "scroll_to":
@@ -298,6 +305,14 @@ def make_act_node(deps: AgentDeps):
                 current = state.get("observations") or []
                 projected = current + [{"kind": "extract", "data": {"visited": visited}}]
                 update["observations"] = compact_observations(projected)
+        if action == "search" and r.status == "ok":
+            # Search results (title/url/snippet list) land as an extract
+            # observation so subsequent plan steps + the final extractor
+            # can see them. Especially important for "goto the top result"
+            # style flows where the planner needs the URL from the results.
+            current = state.get("observations") or []
+            projected = current + [{"kind": "extract", "data": {"search": r.data}}]
+            update["observations"] = compact_observations(projected)
         if action == "extract" and r.status == "ok":
             # observations is non-reducer now; append + compact explicitly.
             current = state.get("observations") or []
