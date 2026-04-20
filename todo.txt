@@ -1,0 +1,79 @@
+auth
+tree into llm or not
+domain level rate limiting but multiple steps. what if its like github to pr to filter to commit to the to comment and all. its all like 5-7 steps per sample.
+thoought, should we have different nodes have different ips?
+
+1. The auth:
+there can be mukltiple ways to auth. like username password, or oauth, or session cookie, or 2fa, or captcha, or something else. 
+how does playright handle that? do a websearch on how is auth usually ahendled inn the browzer agents. 
+
+2. the planner
+what if the planner doesnt have enough context about the task? like it doesnt know what to do? like some niche software that is not in the knowledge base of the opus llm?
+or what if it can only be good once it understand the website? like it needs to do some initial exploration of the website to understand it? 
+or, not sure if this is okay, but what if the user needs to do and show for one sample, and then the agent can use that to understand the website and then do it for the rest of the samples?
+may be this can also help with the authentication?
+should we use screenshots of the page or something to actually undertsand what needs to come from where etc. 
+
+3. Rate Limiting. 
+How are we going to handle rate limiting? 
+it can be domain level rate limiting. 
+but even for a single domain, there can be multiple steps. like github to pr to filter to commit to the to comment and all. its all like 5-7 steps per sample. 
+and the it wpuld be slow. 
+should we think about the different nodes having different ips? rotating ips?
+how should we solve this.
+
+
+the main part is to be highly accurate. even if the implemetnation is complicated. it needs to be ver highly accruate. 
+there needs to be multiple path that we need to explore before actually diving out. 
+
+areas to focus on:
+1. how will the agent be able to make a proper plan without knowing fully about the platform? needs to work 100 percernt of the time
+2. how to handle authentication of different types odf websirtes. should this be user done, should this be already saved in the user broseer and then we copt the cache or the profile etc? but will that work always? what if it has a mfa? how are we handling aith across mutliople pods? will we need to do auth mutliole times or what?
+3. the entire domain level rate limiting. if we keep the entire afent within one insstance or pod or worker, then its slow, if we seperate it then proxy ip can solve it, but howwill we solve the auth for different of them? etc etc.  
+
+
+Few Suggestions from gemini on selected topics
+If they are evaluating you on *extreme* accuracy, then relying on a generic wrapper or a single zero-shot LLM prompt won't survive contact with reality. Web UIs are chaotic, and standard agents fail because they hallucinate selectors or click before a page finishes loading.
+
+To achieve 95%+ accuracy, you have to treat the browser agent less like a human clicking around, and more like a high-stakes ETL pipeline where the browser is an incredibly volatile data source. Every step must have defensive checks.
+
+Here are the specific, engineering-heavy solutions that push an agent from "demo-quality" to "audit-grade" accuracy:
+
+### 1. Visual & Network Stabilization (The Silent Killer)
+Agents constantly fail because they parse the DOM or take a screenshot while a loading spinner is active, or while a React component is still hydrating.
+* **The Fix:** Never execute an action based purely on the `domcontentloaded` event. Implement a custom wait function that checks for **Network Idle** (no active network requests for 500ms) *and* **DOM Mutation Idle** (no changes to the HTML structure for 500ms). Ensure the page is visually stabilized before the agent "looks" at it.
+
+### 2. The "Expectation vs. Reality" Checkpoint (Strict State Transitions)
+If the agent clicks "Open Pull Request," it shouldn't just blindly proceed to the next extraction step. 
+* **The Fix:** Using the LangGraph architecture outlined in your plan, enforce a rigid `VERIFY` node after every single `ACT` node. Before taking an action, the agent must output a predicted state (e.g., `"Expected: A modal containing the CI checks will appear"`). The `VERIFY` node then takes a fresh screenshot and evaluates: *"Did the expected state occur?"* If not, it routes back to a `REFLECT` node to self-correct before the pipeline gets permanently derailed.
+
+### 3. Dual-Grounding (Visual + DOM Cross-Referencing)
+Relying solely on Set-of-Mark (bounding boxes) or solely on the DOM accessibility tree leads to misclicks, especially in dense UIs like Jira or GitHub Blame views. 
+* **The Fix:** Force the model to cross-reference. Require the LLM to output a JSON payload that includes the bounding box ID *and* the exact text inside that box before clicking. 
+    ```json
+    {
+      "action": "click",
+      "target_box_id": "84",
+      "verification_text": "build-and-test / py35-build",
+      "confidence": 0.98
+    }
+    ```
+    If the agent's `verification_text` doesn't strictly match the text parsed from the underlying DOM element for that box, the action is blocked and re-evaluated.
+
+### 4. Specialized Sub-Agents (Routing)
+A single "general" prompt gets confused by complex, nested UI workflows (like Task 3's requirement to dig into specific passed/failed CI checks).
+* **The Fix:** Use a "Router" pattern. The Orchestrator LLM detects the context (e.g., "I am on a GitHub Actions page") and hands control over to a specialized sub-agent with a highly specific prompt dedicated *only* to navigating GitHub CI trees. Narrowing the context window drastically reduces hallucination rates.
+
+### 5. Deterministic Fallbacks
+LLMs are probabilistic. Data extraction should be as deterministic as possible.
+* **The Fix:** If the agent is trying to extract the assignee and due date from a Linear ticket, don't just ask the LLM "What is the date?" Have the LLM locate the DOM node containing the data, and then use standard Python scripts (regex, date parsers) to extract and format the data from that specific node. 
+
+By wrapping the LLM's probabilistic reasoning in rigid, deterministic state-checks, you guarantee that failures are caught and retried, rather than silently passed down the pipeline. 
+
+Looking at the specific examples in your PDF (Linear tickets, GitHub Blame views, Workday reports), which of these systems' UIs seems the most likely to break an automated navigation flow?
+
+okay, so we need to implement this in phases. 
+Before implementing, understand rthe current state of the project as well. impelemnt what works what needs to be added etc etc. 
+1. we need to have the ocr thing, where we try to get the bounding boxes of the elements in the page. and understand what to click at each page and not. 
+2. we also need to have the auth thing impleented. where we can get the tasks done, even if slow. 
+3. not prioritizing the speed thing for now. or even the scalability. lets just hvae it all working first. 

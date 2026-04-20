@@ -1,0 +1,44 @@
+run-e31fd832
+Easy - NLP version of the run-scroll task                                                                                                                         
+                                                                                                                                                             
+That one used config/tasks/03-github-issue.yaml. Equivalent via the UI form:
+                                                                                                                                                             
+  Task (textarea):                                                                                                                                           
+  For each row in the input, go to url (a public GitHub issue                                                                                     
+  page). Take a full-page screenshot of the issue. Then extract the issue                                                                                    
+  title, the author's username, and the current state (open or closed).                                                                                      
+                                                                         
+  Form fields:                                                                                                                                               
+  - Repeat: ✅                                                                                                                                               
+  - Input file: tests/fixtures/03-github-issue.csv                                                                                                           
+  - Extract fields: title, author, state                                                                                                                     
+  - Multi-item: ☐ unchecked  (one issue in → one row out)                                                                                                    
+  - Max samples: blank (only 2 rows in that CSV, cheap)  
+
+
+run-3a2f4e33, run-fc1f2a86
+Medium — visit top 2 PRs, screenshot, done
+
+  Task (textarea):
+  Visit the top 2 closed pull requests on this page (different PRs, not the
+  same one twice). Take a viewport screenshot of each PR's detail page.
+  Save each screenshot in a folder named after the repo slug
+  (input_data.repo with "/" replaced by "-").
+
+  Form fields:
+  - Repeat: ✅ checked
+  - Input file: tests/fixtures/closed-prs.csv
+  - Extract fields: leave blank ← this is the key change
+  - Multi-item: ☐ unchecked
+  - Max samples: 1
+    Paste the minimal task (no Extract fields, Multi-item off) from my previous message, leave Max samples blank. That should give you all 15 folders with
+  minimal flakes. Then once you've seen that work, layer extraction back on with a small sample (max_samples=3) to validate before going full.
+
+
+LINKEDIN:
+run-934b69fd (partial)
+run-51706a06 (complete garrytan)
+
+
+feat(agent): goto_search_result primitive — pair with search to navigate results
+
