@@ -1,0 +1,37 @@
+{
+  "run_id": "run-verify-fast",
+  "task": {
+    "task_id": "verify-fast-demo",
+    "task_name": "GH issue NLP",
+    "prompt": "Go to input_data.url (a public GitHub issue). Take a full-page screenshot\nof the issue page. Extract the issue title, the author's username, and\nthe current state (open or closed).\n",
+    "extract_schema": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "author": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "author",
+        "state"
+      ]
+    }
+  },
+  "max_samples_applied": 2
+}

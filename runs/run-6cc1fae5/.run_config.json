@@ -1,0 +1,54 @@
+{
+  "run_id": "run-6cc1fae5",
+  "task": {
+    "task_id": "adhoc-3b7556",
+    "task_name": "Ad-hoc task",
+    "prompt": "Visit the top 2 closed pull requests on this page and take a screenshot                                                                                    \r\n  of each PR's detail page. Save the screenshots in a folder named after                                                                                     \r\n  the repo slug (input_data.repo with \"/\" replaced by \"-\"). Return one                                                                                       \r\n  item per PR with repo, pr_number, author, date, and pr_url.",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "repo",
+          "pr_number",
+          "author",
+          "date",
+          "pr_url"
+        ]
+      }
+    }
+  },
+  "max_samples_applied": 1
+}

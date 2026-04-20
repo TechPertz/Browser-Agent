@@ -13,7 +13,6 @@ build/
 
 # Runtime artifacts (evidence, DBs, logs — never commit)
 data/
-runs/
 logs/
 services/mock_workday/attachments/
 

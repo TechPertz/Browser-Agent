@@ -1,0 +1,16 @@
+sample_id,row_index,verdict,evidence_count
+run-ff6d6976-00000,0,pass,2
+run-ff6d6976-00001,1,pass,2
+run-ff6d6976-00002,2,pass,2
+run-ff6d6976-00003,3,pass,4
+run-ff6d6976-00004,4,pass,3
+run-ff6d6976-00005,5,pass,4
+run-ff6d6976-00006,6,pass,2
+run-ff6d6976-00007,7,pass,2
+run-ff6d6976-00008,8,pass,2
+run-ff6d6976-00009,9,pass,2
+run-ff6d6976-00010,10,pass,3
+run-ff6d6976-00011,11,pass,2
+run-ff6d6976-00012,12,,
+run-ff6d6976-00013,13,pass,2
+run-ff6d6976-00014,14,pass,2

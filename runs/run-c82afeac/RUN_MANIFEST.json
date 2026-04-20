@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "run_id": "run-c82afeac",
+  "generated_at": "2026-04-20T03:07:50.008866+00:00",
+  "task": {
+    "task_id": "adhoc-341f1b",
+    "task_name": "Ad-hoc task",
+    "prompt": "elif sys.platform == \"win32\":\r\n    from ctypes.wintypes import DWORD\r\n    from ctypes import Structure, windll, WinError, GetLastError, byref\r\n\r\n    class FILETIME(Structure):\r\n        _fields_ = [\r\n            (\"dwLowDateTime\", DWORD),\r\n            (\"dwHighDateTime\", DWORD),\r\n\r\nrepository url: https://github.com/rust-lang/rust\r\n\r\nfind the file where the code is, switch to Blame View. See how long ago the last recent change to that code was. Determine if within X time (the year). If so, go into the commit and see if it may have materially changed how something was calculated. Flag if so. Take screenshots to document if so. Additionally, if the code wasn't modified in the past year, but there was code below that changes how the function operates that was modified within the last year. Then we have to determine if this could have materially affected the outcome of the function/calculation and document if so",
+    "extract_schema": {}
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 1,
+    "passed": 0,
+    "failed": 1,
+    "artifacts": 0
+  },
+  "samples": [
+    {
+      "sample_id": "run-c82afeac-00000",
+      "row_index": 0,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    }
+  ],
+  "artifacts": [],
+  "audit_root_hash": "9eb9b9e349dd8b8ed77211338294570923c90ec3604e8fd84b4decd876718d8b",
+  "manifest_hash": "a3b7430ec1d8cee2e1b736487a0d3a67723f5a16b52b2b3ad4111beb46c9e965"
+}

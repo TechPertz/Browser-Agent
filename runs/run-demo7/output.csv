@@ -1,0 +1,3 @@
+sample_id,row_index,item_index,verdict,repo,pr_number,author,date,pr_url
+run-demo7-00000,0,0,fail,facebook/react,36308,mofeiZ,2026-04-17,https://github.com/facebook/react/pull/36308
+run-demo7-00000,0,1,fail,facebook/react,36310,zeyap,,https://github.com/facebook/react/pull/36310

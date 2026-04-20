@@ -1,0 +1,368 @@
+{
+  "version": 1,
+  "run_id": "run-3a2f4e33",
+  "generated_at": "2026-04-19T23:43:26.055291+00:00",
+  "task": {
+    "task_id": "adhoc-cc86f8",
+    "task_name": "Ad-hoc task",
+    "prompt": "Visit the top 2 closed pull requests on this page (different PRs, not the\r\n  same one twice). Take a viewport screenshot of each PR's detail page.\r\n  Save each screenshot in a folder named after the repo slug\r\n  (input_data.repo with \"/\" replaced by \"-\").",
+    "extract_schema": {}
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 15,
+    "passed": 12,
+    "failed": 3,
+    "artifacts": 33
+  },
+  "samples": [
+    {
+      "sample_id": "run-3a2f4e33-00000",
+      "row_index": 0,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots (pr1.png and pr2.png) were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-3a2f4e33-00001",
+      "row_index": 1,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-3a2f4e33-00002",
+      "row_index": 2,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots (pr1.png and pr2.png) were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-3a2f4e33-00003",
+      "row_index": 3,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 2,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    },
+    {
+      "sample_id": "run-3a2f4e33-00004",
+      "row_index": 4,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots were captured as requested.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-3a2f4e33-00005",
+      "row_index": 5,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 3,
+      "extracted": {},
+      "error": "reflection cap reached"
+    },
+    {
+      "sample_id": "run-3a2f4e33-00006",
+      "row_index": 6,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots (pr_155519.png and pr_155514.png) were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-3a2f4e33-00007",
+      "row_index": 7,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-3a2f4e33-00008",
+      "row_index": 8,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR detail screenshots (pr_21143.png and pr_21142.png) were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-3a2f4e33-00009",
+      "row_index": 9,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR detail page screenshots were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-3a2f4e33-00010",
+      "row_index": 10,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots (pr1.png and pr2.png with different hashes) were captured, satisfying the top-2 closed PR requirement.",
+      "status": "done",
+      "evidence_count": 3,
+      "extracted": {
+        "evidence_count": 3
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-3a2f4e33-00011",
+      "row_index": 11,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots (pr_7552.png and pr_7551.png) were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-3a2f4e33-00012",
+      "row_index": 12,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 3,
+      "extracted": {},
+      "error": "reflection cap reached"
+    },
+    {
+      "sample_id": "run-3a2f4e33-00013",
+      "row_index": 13,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots (pr_3100.png and pr_3095.png) were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-3a2f4e33-00014",
+      "row_index": 14,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR detail screenshots (pr_1387.png and pr_1386.png) were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "01fff0ad7f32ca6cb9b0eb407b8f440436339f95697fd1f514cfed9c8f86ebb5",
+      "path": "blobs/01/01fff0ad7f32ca6cb9b0eb407b8f440436339f95697fd1f514cfed9c8f86ebb5.png",
+      "size": 148824
+    },
+    {
+      "sha256": "042c2661225f2e6de9ad21a9a3a8b4aa2841d4cfbc1c0a5badc81ef41aeba3d5",
+      "path": "blobs/04/042c2661225f2e6de9ad21a9a3a8b4aa2841d4cfbc1c0a5badc81ef41aeba3d5.png",
+      "size": 150245
+    },
+    {
+      "sha256": "04e040ebb6e7fb27fdb334f8ff8815ac37749bd6c5b7748e61521435a3c57c23",
+      "path": "blobs/04/04e040ebb6e7fb27fdb334f8ff8815ac37749bd6c5b7748e61521435a3c57c23.png",
+      "size": 190716
+    },
+    {
+      "sha256": "0a3edcc0b85729fd421fee09215f77df9bb1da15612454e8d0c1d3a71223609f",
+      "path": "blobs/0a/0a3edcc0b85729fd421fee09215f77df9bb1da15612454e8d0c1d3a71223609f.png",
+      "size": 172122
+    },
+    {
+      "sha256": "0ef33d892e597845058e2ff6ea4dafac791bc69e94f8eab7b05a49cffc24b265",
+      "path": "blobs/0e/0ef33d892e597845058e2ff6ea4dafac791bc69e94f8eab7b05a49cffc24b265.png",
+      "size": 172127
+    },
+    {
+      "sha256": "1076db06bd58e683b13a17d17e4513ebf113aeb86b193b1589ee87ff8e7d5ffe",
+      "path": "blobs/10/1076db06bd58e683b13a17d17e4513ebf113aeb86b193b1589ee87ff8e7d5ffe.png",
+      "size": 140538
+    },
+    {
+      "sha256": "1664cb7e5f6568599d38508ac729d1b43730056fb75b022fb15e43fe19893326",
+      "path": "blobs/16/1664cb7e5f6568599d38508ac729d1b43730056fb75b022fb15e43fe19893326.png",
+      "size": 138629
+    },
+    {
+      "sha256": "2071675e67768eaccf2f9ea8b077d6f7a1b7a376c4a5c7ad3b9b39d676af7068",
+      "path": "blobs/20/2071675e67768eaccf2f9ea8b077d6f7a1b7a376c4a5c7ad3b9b39d676af7068.png",
+      "size": 159596
+    },
+    {
+      "sha256": "220a240fae5b96cb050d89cc553b1eafd9df71b22d74e00f2892a823c43e77fd",
+      "path": "blobs/22/220a240fae5b96cb050d89cc553b1eafd9df71b22d74e00f2892a823c43e77fd.png",
+      "size": 152017
+    },
+    {
+      "sha256": "41290281cb0708e85febcbf02454ce1cf8278c8adec926bda75e7b390063c777",
+      "path": "blobs/41/41290281cb0708e85febcbf02454ce1cf8278c8adec926bda75e7b390063c777.png",
+      "size": 193735
+    },
+    {
+      "sha256": "44abde9b569843c366b5e6ddcd94a5066b6554548150d39a2b351ddfce2db164",
+      "path": "blobs/44/44abde9b569843c366b5e6ddcd94a5066b6554548150d39a2b351ddfce2db164.png",
+      "size": 141726
+    },
+    {
+      "sha256": "47dccdc9d4e6bfc5c19a009baddc5c364a4379c4474f371d8966994a60c54779",
+      "path": "blobs/47/47dccdc9d4e6bfc5c19a009baddc5c364a4379c4474f371d8966994a60c54779.png",
+      "size": 209447
+    },
+    {
+      "sha256": "4dffec115ef3bb9bdb5b4fcb641da656bf6ec93b8dd17859202b76c45282c140",
+      "path": "blobs/4d/4dffec115ef3bb9bdb5b4fcb641da656bf6ec93b8dd17859202b76c45282c140.png",
+      "size": 194438
+    },
+    {
+      "sha256": "5b72dcf05a70c53b0aaa0f291521a823f1687721fe95ca8fade10b5a8eb970d6",
+      "path": "blobs/5b/5b72dcf05a70c53b0aaa0f291521a823f1687721fe95ca8fade10b5a8eb970d6.png",
+      "size": 138580
+    },
+    {
+      "sha256": "6b10f61bf15a6d0ef7669f83371ba32a88f4e61337d34607bde79066bff3481c",
+      "path": "blobs/6b/6b10f61bf15a6d0ef7669f83371ba32a88f4e61337d34607bde79066bff3481c.png",
+      "size": 218560
+    },
+    {
+      "sha256": "81e5558d0a8973eda89876d7bb8278a11d2e4467c8b6ca29af519915f5414159",
+      "path": "blobs/81/81e5558d0a8973eda89876d7bb8278a11d2e4467c8b6ca29af519915f5414159.png",
+      "size": 200382
+    },
+    {
+      "sha256": "87c0728ccc853bf9b0bc1d5ac4ad3f52efbcd5a7f198ff505be6cba35a141ad1",
+      "path": "blobs/87/87c0728ccc853bf9b0bc1d5ac4ad3f52efbcd5a7f198ff505be6cba35a141ad1.png",
+      "size": 299338
+    },
+    {
+      "sha256": "8ed268885dbffcd2414b12cba387fff8ebfff5a16b5f3c91a67a5d5923d5dbfc",
+      "path": "blobs/8e/8ed268885dbffcd2414b12cba387fff8ebfff5a16b5f3c91a67a5d5923d5dbfc.png",
+      "size": 179418
+    },
+    {
+      "sha256": "9c6ef694da9acbbc34d7b72d34cebe273b43cd0554fe6087a919d8961ed085c8",
+      "path": "blobs/9c/9c6ef694da9acbbc34d7b72d34cebe273b43cd0554fe6087a919d8961ed085c8.png",
+      "size": 224462
+    },
+    {
+      "sha256": "9ef59eac3c680b2283c6cd74818e09d85730db98edd35d0b7829eb83e4773886",
+      "path": "blobs/9e/9ef59eac3c680b2283c6cd74818e09d85730db98edd35d0b7829eb83e4773886.png",
+      "size": 217946
+    },
+    {
+      "sha256": "a36929dce6872567521fc073f55a1a1f963682c4e05821d4c20cac5180c8b888",
+      "path": "blobs/a3/a36929dce6872567521fc073f55a1a1f963682c4e05821d4c20cac5180c8b888.png",
+      "size": 218508
+    },
+    {
+      "sha256": "aa9904b9ebd967f0d7fac13f4043b255a2e7c177f8a5d68e55c1161018d23fd2",
+      "path": "blobs/aa/aa9904b9ebd967f0d7fac13f4043b255a2e7c177f8a5d68e55c1161018d23fd2.png",
+      "size": 204384
+    },
+    {
+      "sha256": "ac10661a88cc644812bd14960201627ce987f52b9b5b7e43864141a8990d4c18",
+      "path": "blobs/ac/ac10661a88cc644812bd14960201627ce987f52b9b5b7e43864141a8990d4c18.png",
+      "size": 178801
+    },
+    {
+      "sha256": "c675669296ecf30a04d5cd34925de12140174820ba287f3802a8c97c1ae64d7b",
+      "path": "blobs/c6/c675669296ecf30a04d5cd34925de12140174820ba287f3802a8c97c1ae64d7b.png",
+      "size": 159600
+    },
+    {
+      "sha256": "c711227048a60c15175a5ccd583caea62781abec80be85366b5652879e47086d",
+      "path": "blobs/c7/c711227048a60c15175a5ccd583caea62781abec80be85366b5652879e47086d.png",
+      "size": 199905
+    },
+    {
+      "sha256": "d8481250eb1ac3bdd1e9e93bb7430641d344ee05e655a752813246f57b428066",
+      "path": "blobs/d8/d8481250eb1ac3bdd1e9e93bb7430641d344ee05e655a752813246f57b428066.png",
+      "size": 168659
+    },
+    {
+      "sha256": "d879c8c98658903b9bc1c19fc8d9d121c8a0a44f496730a85c1be6166a6436c6",
+      "path": "blobs/d8/d879c8c98658903b9bc1c19fc8d9d121c8a0a44f496730a85c1be6166a6436c6.png",
+      "size": 209485
+    },
+    {
+      "sha256": "e0b055e94e3f646bcfce75f43666d6db43d612f070e64708573c7c1c33d9dc22",
+      "path": "blobs/e0/e0b055e94e3f646bcfce75f43666d6db43d612f070e64708573c7c1c33d9dc22.png",
+      "size": 187606
+    },
+    {
+      "sha256": "e14c9095258a47cea7ff32f234e324880306999809a544d616889293599a8212",
+      "path": "blobs/e1/e14c9095258a47cea7ff32f234e324880306999809a544d616889293599a8212.png",
+      "size": 165529
+    },
+    {
+      "sha256": "e32647ab79da89caea9ab1c7fbf7fad0abba1bd5fa6e419321b3959894e4a3b8",
+      "path": "blobs/e3/e32647ab79da89caea9ab1c7fbf7fad0abba1bd5fa6e419321b3959894e4a3b8.png",
+      "size": 174621
+    },
+    {
+      "sha256": "f10772877bae6d926cb1f79297b9aa46d3a353d65036fd480ea2a8dd5507a24c",
+      "path": "blobs/f1/f10772877bae6d926cb1f79297b9aa46d3a353d65036fd480ea2a8dd5507a24c.png",
+      "size": 153418
+    },
+    {
+      "sha256": "f4ca662e0c15f47cd2d9312b2735e25240015acd46672bd454587c6b0d2bf364",
+      "path": "blobs/f4/f4ca662e0c15f47cd2d9312b2735e25240015acd46672bd454587c6b0d2bf364.png",
+      "size": 158990
+    },
+    {
+      "sha256": "fadd57ed4dd732fcdd9989b9673b842968ca799ce6d3c20615d856a3429d7e8f",
+      "path": "blobs/fa/fadd57ed4dd732fcdd9989b9673b842968ca799ce6d3c20615d856a3429d7e8f.png",
+      "size": 137282
+    }
+  ],
+  "audit_root_hash": "19fcffd9b5ead0dca6c14d9e93fcb71388cf38f98acc87eff176c23ea537e3f6",
+  "manifest_hash": "3bfc7e5568e37d85dfe37717fdb0b0ba2f988517c51089c8bb7836d4af588be8"
+}

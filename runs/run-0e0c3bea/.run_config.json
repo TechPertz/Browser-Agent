@@ -1,0 +1,37 @@
+{
+  "run_id": "run-0e0c3bea",
+  "task": {
+    "task_id": "adhoc-918e43",
+    "task_name": "Ad-hoc task",
+    "prompt": "For each row in the input, go to input_data.url (a public GitHub issue                                                                                     \r\n  page). Take a full-page screenshot of the issue. Then extract the issue                                                                                    \r\n  title, the author's username, and the current state (open or closed). ",
+    "extract_schema": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "author": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "author",
+        "state"
+      ]
+    }
+  },
+  "max_samples_applied": 2
+}

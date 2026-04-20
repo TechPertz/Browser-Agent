@@ -1,0 +1,2 @@
+sample_id,row_index,verdict,title,author,state
+run-scroll-00000,0,pass,fix(lint): webkit linting,pavelfeldman,closed

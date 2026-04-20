@@ -1,0 +1,61 @@
+{
+  "run_id": "run-c0276d65",
+  "task": {
+    "task_id": "adhoc-c2797d",
+    "task_name": "Ad-hoc task",
+    "prompt": "For each repo in the input, go to input_data.url and open each of the                                                                                      \r\n  top 10 closed pull requests in turn. On every PR's detail page, take a                                                                                     \r\n  screenshot and extract the author's username and the creation date.                                                                                        \r\n  Save every screenshot in a folder named after the repo \u2014 replace \"/\"                                                                                 \r\n  with \"-\" in input_data.repo (e.g. \"facebook/react\" -> \"facebook-react\").                                                                                   \r\n  Return 10 items per repo.",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "repo",
+          "pr_number",
+          "pr_title",
+          "author",
+          "date",
+          "pr_url"
+        ]
+      }
+    }
+  },
+  "max_samples_applied": 3
+}

@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "run_id": "run-demo6",
+  "generated_at": "2026-04-19T23:26:04.217485+00:00",
+  "task": {
+    "task_id": "demo6",
+    "task_name": "Closed PRs",
+    "prompt": "Visit the top 2 closed pull requests on this page and screenshot each\ndetail page. Save screenshots into a folder named after the repo slug\n(input_data.repo with '/' replaced by '-'). Return one item per PR\nwith repo, pr_number, author, date, pr_url.\n",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "repo",
+          "pr_number",
+          "author",
+          "date",
+          "pr_url"
+        ]
+      }
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 1,
+    "passed": 0,
+    "failed": 1,
+    "artifacts": 2
+  },
+  "samples": [
+    {
+      "sample_id": "run-demo6-00000",
+      "row_index": 0,
+      "verdict": "fail",
+      "verdict_reason": "The 'date' field is null for both PRs, violating the requirement that every required schema field be non-null.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": [
+        {
+          "repo": "facebook/react",
+          "pr_number": "36308",
+          "author": "mofeiZ",
+          "date": null,
+          "pr_url": "https://github.com/facebook/react/pull/36308"
+        },
+        {
+          "repo": "facebook/react",
+          "pr_number": "36310",
+          "author": "zeyap",
+          "date": null,
+          "pr_url": "https://github.com/facebook/react/pull/36310"
+        }
+      ],
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "39d930c528fc70e6419a3def21a75cad0b20d55aca4a641ac014fac546e30049",
+      "path": "blobs/39/39d930c528fc70e6419a3def21a75cad0b20d55aca4a641ac014fac546e30049.png",
+      "size": 153415
+    },
+    {
+      "sha256": "e11d83781aa357a28e290611cc23049efeff6953615f295ed0c9fd3413547712",
+      "path": "blobs/e1/e11d83781aa357a28e290611cc23049efeff6953615f295ed0c9fd3413547712.png",
+      "size": 141721
+    }
+  ],
+  "audit_root_hash": "ba1437e8679ed6b88fcce6369afae056878796a1c5f4530f23c36010b0b40872",
+  "manifest_hash": "92369d6c8929865f43cb12cf4641ea9a128962a4ab0f01232515e3a46e143098"
+}

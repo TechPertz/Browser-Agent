@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "run_id": "run-51a48261",
+  "generated_at": "2026-04-19T23:51:09.102492+00:00",
+  "task": {
+    "task_id": "adhoc-f06c49",
+    "task_name": "Ad-hoc task",
+    "prompt": "For each row in the input, go to input_data.url (a public GitHub issue                                                                                     \r\n  page). Take a full-page screenshot of the issue. Then extract the issue                                                                                    \r\n  title, the author's username, and the current state (open or closed).",
+    "extract_schema": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "author": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "author",
+        "state"
+      ]
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 2,
+    "passed": 1,
+    "failed": 1,
+    "artifacts": 3
+  },
+  "samples": [
+    {
+      "sample_id": "run-51a48261-00000",
+      "row_index": 0,
+      "verdict": "pass",
+      "verdict_reason": "All required fields are populated and a screenshot artifact exists to support the extracted issue details.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "title": "fix(lint): webkit linting",
+        "author": "pavelfeldman",
+        "state": "closed"
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-51a48261-00001",
+      "row_index": 1,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 2,
+      "extracted": {},
+      "error": "reflection cap reached"
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "67a12684313323c9391b9a4eaf3cce8f040d63a39ffd06753046f10479212d66",
+      "path": "blobs/67/67a12684313323c9391b9a4eaf3cce8f040d63a39ffd06753046f10479212d66.png",
+      "size": 141437
+    },
+    {
+      "sha256": "dabceec2fec2ab95d245e8ad1b58030a7c694ee0ede313eb790196aeb73fa048",
+      "path": "blobs/da/dabceec2fec2ab95d245e8ad1b58030a7c694ee0ede313eb790196aeb73fa048.png",
+      "size": 193537
+    },
+    {
+      "sha256": "dd7f628ba83a1ad99f5e9b17ca7c0e0b2d6d477b38608c9194c4fac079a20717",
+      "path": "blobs/dd/dd7f628ba83a1ad99f5e9b17ca7c0e0b2d6d477b38608c9194c4fac079a20717.png",
+      "size": 141431
+    }
+  ],
+  "audit_root_hash": "a7ca372c8021644fc0bad693aae27129dca302036b19a29b833b47536cd0c07f",
+  "manifest_hash": "55b2431ad453a44ed691bb130afd5e0bc42f4f656e2c8e9ff06777fb82fc07d5"
+}

@@ -1,0 +1,10 @@
+{
+  "run_id": "run-fc1f2a86",
+  "task": {
+    "task_id": "adhoc-fe03f6",
+    "task_name": "Ad-hoc task",
+    "prompt": "Visit the top 2 closed pull requests on this page (different PRs, not the\r\n  same one twice). Take a viewport screenshot of each PR's detail page.\r\n  Save each screenshot in a folder named after the repo slug\r\n  (repo with \"/\" replaced by \"-\").",
+    "extract_schema": {}
+  },
+  "max_samples_applied": 15
+}

@@ -1,0 +1,61 @@
+{
+  "run_id": "run-dc633a67",
+  "task": {
+    "task_id": "adhoc-d69a89",
+    "task_name": "Ad-hoc task",
+    "prompt": "Visit the top 2 closed pull requests on this page and read off each\r\n  PR's author username. For each author, open                               \r\n  https://duckduckgo.com/?q=<author>+site%3Alinkedin.com and click the                                                                                       \r\n  first result whose URL contains \"linkedin.com/in/\". Take a viewport    \r\n  screenshot of the LinkedIn profile page. Save each screenshot under                                                                                        \r\n  a folder named after the repo slug (input_data.repo with \"/\" replaced                                                                                      \r\n  by \"-\"). Read the profile and return one item per author with repo,                                                                                        \r\n  author, linkedin_url, school (most recent education entry),                                                                                                \r\n  current_company (top role in the experience section), and tenure                                                                                           \r\n  (how long at that company).",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "linkedin_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "school": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current_company": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tenure": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "repo",
+          "author",
+          "linkedin_url",
+          "school",
+          "current_company",
+          "tenure"
+        ]
+      }
+    }
+  },
+  "max_samples_applied": 2
+}

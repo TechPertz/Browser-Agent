@@ -1,0 +1,402 @@
+{
+  "version": 1,
+  "run_id": "run-85ba94e3",
+  "generated_at": "2026-04-20T00:42:35.841877+00:00",
+  "task": {
+    "task_id": "adhoc-09b44f",
+    "task_name": "Ad-hoc task",
+    "prompt": "Visit the top 2 closed pull requests on this page and read off each                                                                                        \r\n  PR's author username. For each author, run a search for                                                                                                    \r\n  \"<author> site:linkedin.com\" using the search action, then go to the                                                                                       \r\n  first result URL whose path contains \"/in/\". Take a viewport                                                                                               \r\n  screenshot of that LinkedIn profile page. Save each screenshot under                                                                                       \r\n  a folder named after the repo slug (input_data.repo with \"/\" replaced                                                                                      \r\n  by \"-\"). Read the profile and return one item per author with repo,                                                                                        \r\n  author, linkedin_url, school (most recent education entry),                                                                                              \r\n  current_company (top role in the experience section), and tenure                                                                                           \r\n  (how long at that company).",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "linkedin_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "school": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current_company": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tenure": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "repo",
+          "author",
+          "linkedin_url",
+          "school",
+          "current_company",
+          "tenure"
+        ]
+      }
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 15,
+    "passed": 0,
+    "failed": 15,
+    "artifacts": 10
+  },
+  "samples": [
+    {
+      "sample_id": "run-85ba94e3-00000",
+      "row_index": 0,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    },
+    {
+      "sample_id": "run-85ba94e3-00001",
+      "row_index": 1,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "unknown action 'goto_first_in_result'"
+    },
+    {
+      "sample_id": "run-85ba94e3-00002",
+      "row_index": 2,
+      "verdict": "fail",
+      "verdict_reason": "Extracted fields are empty and only one screenshot exists for two required authors, with no structured data returned.",
+      "status": "done",
+      "evidence_count": 1,
+      "extracted": {},
+      "error": null
+    },
+    {
+      "sample_id": "run-85ba94e3-00003",
+      "row_index": 3,
+      "verdict": "fail",
+      "verdict_reason": "Extracted fields are empty and no structured results per author were returned.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {},
+      "error": null
+    },
+    {
+      "sample_id": "run-85ba94e3-00004",
+      "row_index": 4,
+      "verdict": "fail",
+      "verdict_reason": "Extracted fields are empty and the two screenshots share the same hash, indicating missing per-author data and duplicate evidence.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {},
+      "error": null
+    },
+    {
+      "sample_id": "run-85ba94e3-00005",
+      "row_index": 5,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    },
+    {
+      "sample_id": "run-85ba94e3-00006",
+      "row_index": 6,
+      "verdict": "fail",
+      "verdict_reason": "Extracted fields are empty and both screenshots share identical hashes, indicating missing required data and unreliable evidence.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {},
+      "error": null
+    },
+    {
+      "sample_id": "run-85ba94e3-00007",
+      "row_index": 7,
+      "verdict": "fail",
+      "verdict_reason": "Extracted fields are empty and evidence only contains search screenshots (identical hash), with no LinkedIn profile screenshots or author data.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {},
+      "error": null
+    },
+    {
+      "sample_id": "run-85ba94e3-00008",
+      "row_index": 8,
+      "verdict": "fail",
+      "verdict_reason": "Extracted fields are empty and only one author's screenshot exists instead of two required items with all fields.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {},
+      "error": null
+    },
+    {
+      "sample_id": "run-85ba94e3-00009",
+      "row_index": 9,
+      "verdict": "fail",
+      "verdict_reason": "Extracted fields are empty and only one screenshot exists without any author, LinkedIn URL, or profile details captured.",
+      "status": "done",
+      "evidence_count": 1,
+      "extracted": {},
+      "error": null
+    },
+    {
+      "sample_id": "run-85ba94e3-00010",
+      "row_index": 10,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    },
+    {
+      "sample_id": "run-85ba94e3-00011",
+      "row_index": 11,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    },
+    {
+      "sample_id": "run-85ba94e3-00012",
+      "row_index": 12,
+      "verdict": "fail",
+      "verdict_reason": "linkedin_url, school, current_company, and tenure are all null, and both screenshots share the same hash indicating no actual profile pages were captured.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": [
+        {
+          "repo": "microsoft/playwright",
+          "author": "2015kmadanap",
+          "linkedin_url": null,
+          "school": null,
+          "current_company": null,
+          "tenure": null
+        },
+        {
+          "repo": "microsoft/playwright",
+          "author": "sianux1209",
+          "linkedin_url": null,
+          "school": null,
+          "current_company": null,
+          "tenure": null
+        }
+      ],
+      "error": null
+    },
+    {
+      "sample_id": "run-85ba94e3-00013",
+      "row_index": 13,
+      "verdict": "fail",
+      "verdict_reason": "No extracted fields or evidence artifacts were produced, so required schema fields are missing.",
+      "status": "done",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": null
+    },
+    {
+      "sample_id": "run-85ba94e3-00014",
+      "row_index": 14,
+      "verdict": "fail",
+      "verdict_reason": "All required fields (linkedin_url, school, current_company, tenure) are null and there are too many authors instead of top 2.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": [
+        {
+          "repo": "anthropic-sdk-python",
+          "author": "stainless-app bot",
+          "linkedin_url": null,
+          "school": null,
+          "current_company": null,
+          "tenure": null
+        },
+        {
+          "repo": "anthropic-sdk-python",
+          "author": "nightcityblade",
+          "linkedin_url": null,
+          "school": null,
+          "current_company": null,
+          "tenure": null
+        },
+        {
+          "repo": "anthropic-sdk-python",
+          "author": "muhammadrashid4587",
+          "linkedin_url": null,
+          "school": null,
+          "current_company": null,
+          "tenure": null
+        },
+        {
+          "repo": "anthropic-sdk-python",
+          "author": "nuglifeleoji",
+          "linkedin_url": null,
+          "school": null,
+          "current_company": null,
+          "tenure": null
+        },
+        {
+          "repo": "anthropic-sdk-python",
+          "author": "yuribodo",
+          "linkedin_url": null,
+          "school": null,
+          "current_company": null,
+          "tenure": null
+        },
+        {
+          "repo": "anthropic-sdk-python",
+          "author": "hkc5",
+          "linkedin_url": null,
+          "school": null,
+          "current_company": null,
+          "tenure": null
+        },
+        {
+          "repo": "anthropic-sdk-python",
+          "author": "abdelhadi703",
+          "linkedin_url": null,
+          "school": null,
+          "current_company": null,
+          "tenure": null
+        },
+        {
+          "repo": "anthropic-sdk-python",
+          "author": "Scottcjn",
+          "linkedin_url": null,
+          "school": null,
+          "current_company": null,
+          "tenure": null
+        },
+        {
+          "repo": "anthropic-sdk-python",
+          "author": "joshuaswanson",
+          "linkedin_url": null,
+          "school": null,
+          "current_company": null,
+          "tenure": null
+        },
+        {
+          "repo": "anthropic-sdk-python",
+          "author": "tombudd",
+          "linkedin_url": null,
+          "school": null,
+          "current_company": null,
+          "tenure": null
+        },
+        {
+          "repo": "anthropic-sdk-python",
+          "author": "JakeBx",
+          "linkedin_url": null,
+          "school": null,
+          "current_company": null,
+          "tenure": null
+        },
+        {
+          "repo": "anthropic-sdk-python",
+          "author": "RobertCraigie",
+          "linkedin_url": null,
+          "school": null,
+          "current_company": null,
+          "tenure": null
+        },
+        {
+          "repo": "anthropic-sdk-python",
+          "author": "JasonOA888",
+          "linkedin_url": null,
+          "school": null,
+          "current_company": null,
+          "tenure": null
+        }
+      ],
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "54c765485585183ccfeaf238cfbe31d14f24e2e4b71b3821d07c47f422428e94",
+      "path": "blobs/54/54c765485585183ccfeaf238cfbe31d14f24e2e4b71b3821d07c47f422428e94.png",
+      "size": 155062
+    },
+    {
+      "sha256": "7799394cdb12ad0783f10d1146f3a3ca40abde2d5334f326ec4d3c8717cb6fea",
+      "path": "blobs/77/7799394cdb12ad0783f10d1146f3a3ca40abde2d5334f326ec4d3c8717cb6fea.png",
+      "size": 194880
+    },
+    {
+      "sha256": "79115f24c43c136bf0f8d346ac5545ebe64207e9f3d08e73cc6eb82b8dd32c5f",
+      "path": "blobs/79/79115f24c43c136bf0f8d346ac5545ebe64207e9f3d08e73cc6eb82b8dd32c5f.png",
+      "size": 135113
+    },
+    {
+      "sha256": "84c34e225bcaaed1b0d8be4cf2932d39a0a5ba3a76a49ebe04dacab01e517c36",
+      "path": "blobs/84/84c34e225bcaaed1b0d8be4cf2932d39a0a5ba3a76a49ebe04dacab01e517c36.png",
+      "size": 235850
+    },
+    {
+      "sha256": "8c2b96af38c0c0c3f2ddbeaffc7e6ce0d92274ed56cad36280d744a0f3def55a",
+      "path": "blobs/8c/8c2b96af38c0c0c3f2ddbeaffc7e6ce0d92274ed56cad36280d744a0f3def55a.png",
+      "size": 163266
+    },
+    {
+      "sha256": "93ad5fccd43fe3449c7bc5104872d289cd1cc765e2842b9b2cd9b5b2ab432138",
+      "path": "blobs/93/93ad5fccd43fe3449c7bc5104872d289cd1cc765e2842b9b2cd9b5b2ab432138.png",
+      "size": 202828
+    },
+    {
+      "sha256": "93fde01b23f958f1645d013922b265184294dce684a6d64b33b18371532131db",
+      "path": "blobs/93/93fde01b23f958f1645d013922b265184294dce684a6d64b33b18371532131db.png",
+      "size": 213249
+    },
+    {
+      "sha256": "cc6f4e09f64737d53e67b25a07ea5a5474b8819cf57a38a8e3029ba3dfadac2a",
+      "path": "blobs/cc/cc6f4e09f64737d53e67b25a07ea5a5474b8819cf57a38a8e3029ba3dfadac2a.png",
+      "size": 182640
+    },
+    {
+      "sha256": "d3190ed873a53cf4d44bc3365edc03fa2a4036affca8528ff2bed078234680c7",
+      "path": "blobs/d3/d3190ed873a53cf4d44bc3365edc03fa2a4036affca8528ff2bed078234680c7.png",
+      "size": 259883
+    },
+    {
+      "sha256": "db85ec36ab30c68d2008d8dacbba9cfa863be108fa2ef8b672d855d9e205d1fd",
+      "path": "blobs/db/db85ec36ab30c68d2008d8dacbba9cfa863be108fa2ef8b672d855d9e205d1fd.png",
+      "size": 140215
+    }
+  ],
+  "audit_root_hash": "5afccaf33b5bec4a05113f004bdf83052b72e11f09932e67d287b8709bdc3007",
+  "manifest_hash": "13acb5581c16f6a5a70f1b083f0c406c19ee2dfe4e50abe82dfcacb5973c71d4"
+}

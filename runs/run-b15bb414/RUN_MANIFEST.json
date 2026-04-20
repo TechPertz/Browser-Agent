@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "run_id": "run-b15bb414",
+  "generated_at": "2026-04-20T00:24:07.310248+00:00",
+  "task": {
+    "task_id": "adhoc-5dff9f",
+    "task_name": "Ad-hoc task",
+    "prompt": "Visit the top 2 closed pull requests on this page and read off each                                                                                        \r\n  PR's author username. For each author, open                                            \r\n  https://www.google.com/search?q=<author>+site%3Alinkedin.com in the                                                                                        \r\n  browser, click the first result whose URL contains linkedin.com/in/,                                                                                       \r\n  and take a viewport screenshot of the LinkedIn profile page. Save                                                                                          \r\n  each screenshot under a folder named after the repo slug                                                                                                   \r\n  (input_data.repo with \"/\" replaced by \"-\"). Read the profile and                                                                                           \r\n  return one item per author with repo, author, linkedin_url, school                                                                                         \r\n  (most recent education entry), current_company (top role in the                                                                                            \r\n  experience section), and tenure (how long at that company, e.g.                                                                                            \r\n  \"2 yrs 3 mos\").",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "linkedin_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "school": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current_company": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tenure": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "repo",
+          "author",
+          "linkedin_url",
+          "school",
+          "current_company",
+          "tenure"
+        ]
+      }
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 2,
+    "passed": 0,
+    "failed": 2,
+    "artifacts": 1
+  },
+  "samples": [
+    {
+      "sample_id": "run-b15bb414-00000",
+      "row_index": 0,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    },
+    {
+      "sample_id": "run-b15bb414-00001",
+      "row_index": 1,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 1,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "97d69e75c274b7d75e629d4f82bd12774d715f8c15b909fe41de57e254c1a00a",
+      "path": "blobs/97/97d69e75c274b7d75e629d4f82bd12774d715f8c15b909fe41de57e254c1a00a.png",
+      "size": 165074
+    }
+  ],
+  "audit_root_hash": "e1043946ceb02195a5f2434a62f40be15e05160810fef8e92a4097870bdb3179",
+  "manifest_hash": "52c7fae2a4edcf70e8332143df6bf3ac04435722c2e07d6fadb700e1998341e8"
+}

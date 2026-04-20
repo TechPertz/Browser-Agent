@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "run_id": "run-51706a06",
+  "generated_at": "2026-04-20T02:44:59.806813+00:00",
+  "task": {
+    "task_id": "adhoc-ddfdf3",
+    "task_name": "Ad-hoc task",
+    "prompt": "Open the GitHub PR URL from the input row. On the PR page, extract the author's GitHub\r\n  username from the header. Then:                                                        \r\n  1. Use `search` to query Google for: \"<author name> site:linkedin.com/in\"     \r\n  2. Use `goto_search_result` with index=0 and url_filter=\"linkedin.com/in\" to open the\r\n  first LinkedIn profile result.                                                         \r\n  3. Take a full-page screenshot of the LinkedIn profile into folder `<repo_slug>/` where\r\n   <repo_slug> is the repo path with slashes replaced by dashes.                         \r\n  4. Extract the profile fields from the visible content — set any field to null if it's \r\n  not visible.                                                                           \r\n                                                                                         \r\n  For any click whose target depends on page content, emit `visual_do` with a            \r\n  natural-language intent. Do NOT guess selectors.",
+    "extract_schema": {
+      "type": "object",
+      "properties": {
+        "author": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "linkedin_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "school": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "current_company": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tenure": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "author",
+        "linkedin_url",
+        "school",
+        "current_company",
+        "tenure"
+      ]
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 1,
+    "passed": 1,
+    "failed": 0,
+    "artifacts": 1
+  },
+  "samples": [
+    {
+      "sample_id": "run-51706a06-00000",
+      "row_index": 0,
+      "verdict": "pass",
+      "verdict_reason": "All required fields are non-null and a LinkedIn profile screenshot artifact exists supporting the extracted values.",
+      "status": "done",
+      "evidence_count": 1,
+      "extracted": {
+        "author": "Garry Tan",
+        "linkedin_url": "https://www.linkedin.com/in/garrytan/",
+        "school": "Stanford University",
+        "current_company": "Y Combinator",
+        "tenure": "President & CEO"
+      },
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "79ed76011a8def9f92114a066f529dd5005fd80fa9726c4b4539171aea2343dd",
+      "path": "blobs/79/79ed76011a8def9f92114a066f529dd5005fd80fa9726c4b4539171aea2343dd.png",
+      "size": 400630
+    }
+  ],
+  "audit_root_hash": "359526181993d1ceaeb409cfcad074a6120262904bf8947bdb5cd5ab19dafdfd",
+  "manifest_hash": "198bf245efbd69e27c96cb4dbed17e6405b85203fa7f78ae01b7909846705b3f"
+}

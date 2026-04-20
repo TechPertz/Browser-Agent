@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "run_id": "run-e31fd832",
+  "generated_at": "2026-04-20T01:01:15.690724+00:00",
+  "task": {
+    "task_id": "adhoc-678fb4",
+    "task_name": "Ad-hoc task",
+    "prompt": "For each row in the input, go to url (a public GitHub issue                                                                                     \r\n  page). Take a full-page screenshot of the issue. Then extract the issue                                                                                    \r\n  title, the author's username, and the current state (open or closed).",
+    "extract_schema": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "author": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "author",
+        "state"
+      ]
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 2,
+    "passed": 2,
+    "failed": 0,
+    "artifacts": 2
+  },
+  "samples": [
+    {
+      "sample_id": "run-e31fd832-00000",
+      "row_index": 0,
+      "verdict": "pass",
+      "verdict_reason": "All required fields are populated and a full-page screenshot artifact exists supporting the extraction.",
+      "status": "done",
+      "evidence_count": 1,
+      "extracted": {
+        "title": "fix(lint): webkit linting",
+        "author": "pavelfeldman",
+        "state": "closed"
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-e31fd832-00001",
+      "row_index": 1,
+      "verdict": "pass",
+      "verdict_reason": "All required fields are non-null and a full-page screenshot artifact exists to support the extracted values.",
+      "status": "done",
+      "evidence_count": 1,
+      "extracted": {
+        "title": "add simple example notebook",
+        "author": "hwchase17",
+        "state": "closed"
+      },
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "9bab52c7c3d47a93fc6ef7e1868910f35efd6189603d7f7f06df6e1cca4d11fc",
+      "path": "blobs/9b/9bab52c7c3d47a93fc6ef7e1868910f35efd6189603d7f7f06df6e1cca4d11fc.png",
+      "size": 170744
+    },
+    {
+      "sha256": "9c8ec82cd4aa2e7f44c3348c89783379ce4bf59f8fcd5dd3cee52fa990aab733",
+      "path": "blobs/9c/9c8ec82cd4aa2e7f44c3348c89783379ce4bf59f8fcd5dd3cee52fa990aab733.png",
+      "size": 183551
+    }
+  ],
+  "audit_root_hash": "9b90ffa72ccd678967b2bbcf0aacfcc8541545c76d7d8d342c7ce5badfa2cbb7",
+  "manifest_hash": "db4d47e5661b5c388b5ac5e373045f0ffe043598ae7504e287ddd760aea6aa7f"
+}

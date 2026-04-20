@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "run_id": "run-6cc1fae5",
+  "generated_at": "2026-04-19T23:32:26.452114+00:00",
+  "task": {
+    "task_id": "adhoc-3b7556",
+    "task_name": "Ad-hoc task",
+    "prompt": "Visit the top 2 closed pull requests on this page and take a screenshot                                                                                    \r\n  of each PR's detail page. Save the screenshots in a folder named after                                                                                     \r\n  the repo slug (input_data.repo with \"/\" replaced by \"-\"). Return one                                                                                       \r\n  item per PR with repo, pr_number, author, date, and pr_url.",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "repo",
+          "pr_number",
+          "author",
+          "date",
+          "pr_url"
+        ]
+      }
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 1,
+    "passed": 0,
+    "failed": 1,
+    "artifacts": 2
+  },
+  "samples": [
+    {
+      "sample_id": "run-6cc1fae5-00000",
+      "row_index": 0,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 2,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "83bcb5c81b5c46aa56ed7b0fe43f7175d2b3c654060f2427bf15dc76c8f3bdda",
+      "path": "blobs/83/83bcb5c81b5c46aa56ed7b0fe43f7175d2b3c654060f2427bf15dc76c8f3bdda.png",
+      "size": 217043
+    },
+    {
+      "sha256": "c3486a3d5ea8236c0ab45e40693190e5f7d5becfd44888c6c0f0319b8e9e399b",
+      "path": "blobs/c3/c3486a3d5ea8236c0ab45e40693190e5f7d5becfd44888c6c0f0319b8e9e399b.png",
+      "size": 217045
+    }
+  ],
+  "audit_root_hash": "49e4779854e2181911e24a9f318294e65f5165116d10d82957e3663d62a384a2",
+  "manifest_hash": "e7bd470f3970c3c8558984dcc48a2fbe92e70a3acfc9dbbc8bbd78411c624b1c"
+}

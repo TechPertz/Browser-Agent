@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "run_id": "run-e040772c",
+  "generated_at": "2026-04-19T21:58:33.866240+00:00",
+  "task": {
+    "task_id": "gh-issue",
+    "task_name": "GitHub public issue — extract title, author, and state",
+    "prompt": "Navigate to the given GitHub issue URL, capture a screenshot of the issue\npage, and extract the issue's title, the author's username, and the current\nstate (open/closed). Evidence must include a full-page screenshot after the\npage has loaded.\n",
+    "extract_schema": {
+      "title": "Issue metadata",
+      "type": "object",
+      "required": [
+        "title",
+        "author",
+        "state"
+      ],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "open",
+            "closed"
+          ]
+        }
+      }
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 0,
+    "passed": 0,
+    "failed": 0,
+    "artifacts": 0
+  },
+  "samples": [],
+  "artifacts": [],
+  "audit_root_hash": "0901fb208700a98f94bf70afcfe0470a74f144867eced6773fe7cc820b5b8ce9",
+  "manifest_hash": "3b79293b0cfe8813c88426755704e9bf79e8a0d615e81ab23b0e93ccdca313e4"
+}

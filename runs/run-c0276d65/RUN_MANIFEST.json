@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "run_id": "run-c0276d65",
+  "generated_at": "2026-04-19T23:03:57.913319+00:00",
+  "task": {
+    "task_id": "adhoc-c2797d",
+    "task_name": "Ad-hoc task",
+    "prompt": "For each repo in the input, go to input_data.url and open each of the                                                                                      \r\n  top 10 closed pull requests in turn. On every PR's detail page, take a                                                                                     \r\n  screenshot and extract the author's username and the creation date.                                                                                        \r\n  Save every screenshot in a folder named after the repo — replace \"/\"                                                                                 \r\n  with \"-\" in input_data.repo (e.g. \"facebook/react\" -> \"facebook-react\").                                                                                   \r\n  Return 10 items per repo.",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "repo",
+          "pr_number",
+          "pr_title",
+          "author",
+          "date",
+          "pr_url"
+        ]
+      }
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 3,
+    "passed": 0,
+    "failed": 3,
+    "artifacts": 6
+  },
+  "samples": [
+    {
+      "sample_id": "run-c0276d65-00000",
+      "row_index": 0,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 3,
+      "extracted": {},
+      "error": "reflection cap reached"
+    },
+    {
+      "sample_id": "run-c0276d65-00001",
+      "row_index": 1,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 1,
+      "extracted": {},
+      "error": "reflection cap reached"
+    },
+    {
+      "sample_id": "run-c0276d65-00002",
+      "row_index": 2,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 2,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "0b6da0b84f016fb6dc0506c8f01f6fc7b9bcc13358214b1911cb834b01628736",
+      "path": "blobs/0b/0b6da0b84f016fb6dc0506c8f01f6fc7b9bcc13358214b1911cb834b01628736.png",
+      "size": 152814
+    },
+    {
+      "sha256": "56565e3b0e36c8c9efd94562ef71ef122c831f0a76d29ed2b7a2b9f1757ca57d",
+      "path": "blobs/56/56565e3b0e36c8c9efd94562ef71ef122c831f0a76d29ed2b7a2b9f1757ca57d.png",
+      "size": 159230
+    },
+    {
+      "sha256": "85dbaa5e0283c811c6a769f5a14a19485fe7a4d5dbe9fb3cf99c894f63be31c8",
+      "path": "blobs/85/85dbaa5e0283c811c6a769f5a14a19485fe7a4d5dbe9fb3cf99c894f63be31c8.png",
+      "size": 139481
+    },
+    {
+      "sha256": "baca7115226f791c4115ebad4772649bc85a2c5bc3634079824712a8551fa133",
+      "path": "blobs/ba/baca7115226f791c4115ebad4772649bc85a2c5bc3634079824712a8551fa133.png",
+      "size": 185640
+    },
+    {
+      "sha256": "cb911409f6709c775e5e147e4df73225b59bc42a0829d15d6945fa8ad66e5518",
+      "path": "blobs/cb/cb911409f6709c775e5e147e4df73225b59bc42a0829d15d6945fa8ad66e5518.png",
+      "size": 147493
+    },
+    {
+      "sha256": "eb8737be73522afdf7c54b47cd2fcc8726d2053b27c1159a070434183a08fb50",
+      "path": "blobs/eb/eb8737be73522afdf7c54b47cd2fcc8726d2053b27c1159a070434183a08fb50.png",
+      "size": 180937
+    }
+  ],
+  "audit_root_hash": "2cc7cf3ffdc2123e4a6d63ad16f90cf375b569650288e28e71661c562549be84",
+  "manifest_hash": "d87b96ea1b2f854c9016cdd74784c60e0a99d566fdffc69f9b8763b7f575257a"
+}

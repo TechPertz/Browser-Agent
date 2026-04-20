@@ -1,0 +1,75 @@
+{
+  "run_id": "run-bd491665",
+  "task": {
+    "task_id": "adhoc-2b2511",
+    "task_name": "Ad-hoc task",
+    "prompt": "  For each GitHub repo URL in the input, open the closed-PRs page and visit the 2 most recent closed PRs. For each PR, capture the author's GitHub username\r\n  from the PR page header. Then for each author:                                                                                                           \r\n  1. Use `search` to query Google for `\"<author> site:linkedin.com/in\"` via Serper.                                                                          \r\n  2. Use `goto_search_result` with index=0 to open their LinkedIn profile.                                                                                   \r\n  3. Take a full-page screenshot into folder `<repo>/<author>`.                                                                                              \r\n  4. Extract their current company, role, school, and tenure from the profile.                                                                               \r\n  Save all evidence under a folder named after the repo (e.g., `facebook-react/`).                                                                           ",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "author: GitHub username of the PR": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_url: URL of the closed pr": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_title: Title of the PR": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "linkedin_url: LinkedIn profile URL": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current_company: Current employer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current_role: Current job title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "school: Most recent school": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tenure: duration at current company": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "author: GitHub username of the PR",
+          "pr_url: URL of the closed pr",
+          "pr_title: Title of the PR",
+          "linkedin_url: LinkedIn profile URL",
+          "current_company: Current employer",
+          "current_role: Current job title",
+          "school: Most recent school",
+          "tenure: duration at current company"
+        ]
+      }
+    }
+  },
+  "max_samples_applied": 3
+}

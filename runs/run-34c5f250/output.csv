@@ -1,0 +1,6 @@
+sample_id,row_index,verdict,author,linkedin_url,school,current_company,tenure
+run-34c5f250-00000,0,fail,garrytan,https://www.linkedin.com/in/garrytan,,,
+run-34c5f250-00001,1,fail,Guillermo Rauch,https://www.linkedin.com/in/rauchg,,Vercel,
+run-34c5f250-00002,2,fail,leerob,https://www.linkedin.com/in/leeerob,Iowa State University,Cursor,
+run-34c5f250-00003,3,pass,Kent C. Dodds,https://www.linkedin.com/in/kentcdodds,Brigham Young University,Kent C. Dodds Tech LLC,
+run-34c5f250-00004,4,,,,,,

@@ -1,0 +1,61 @@
+{
+  "run_id": "run-0bc2622a",
+  "task": {
+    "task_id": "adhoc-ab1044",
+    "task_name": "Ad-hoc task",
+    "prompt": "Visit the top 6 closed pull requests on this page and read off each                                                                                        \r\n  PR's author username. For each author: use the search action to find                                                                                       \r\n  \"<author> site:linkedin.com\", then use goto_search_result with                                                                                             \r\n  url_filter=\"/in/\" to navigate to the first LinkedIn profile in the\r\n  results, then take a viewport screenshot. Save each screenshot under                                                                                       \r\n  a folder named after the repo slug (input_data.repo with \"/\" replaced                  \r\n  by \"-\"). Read the profile and return one item per author with repo,                                                                                        \r\n  author, linkedin_url, school (most recent education entry),                                                                                                \r\n  current_company (top role in the experience section), and tenure                                                                                           \r\n  (how long at that company).",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "linkedin_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "school": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current_company": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tenure": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "repo",
+          "author",
+          "linkedin_url",
+          "school",
+          "current_company",
+          "tenure"
+        ]
+      }
+    }
+  },
+  "max_samples_applied": 10
+}

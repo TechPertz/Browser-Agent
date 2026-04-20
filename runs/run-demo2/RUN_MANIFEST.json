@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "run_id": "run-demo2",
+  "generated_at": "2026-04-19T23:17:00.590928+00:00",
+  "task": {
+    "task_id": "demo2",
+    "task_name": "Closed PRs",
+    "prompt": "Go to input_data.url. Visit the top 2 closed pull requests on that page\nand screenshot each detail page. Save screenshots grouped into a folder\nnamed after the repo slug (input_data.repo with '/' replaced by '-').\nReturn one item per PR with repo, pr_number, author, date, pr_url.\n",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "repo",
+          "pr_number",
+          "author",
+          "date",
+          "pr_url"
+        ]
+      }
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 1,
+    "passed": 0,
+    "failed": 1,
+    "artifacts": 1
+  },
+  "samples": [
+    {
+      "sample_id": "run-demo2-00000",
+      "row_index": 0,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 1,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "5d2b0ddbb6bc47136f5fbade15a40cde23388f74ddfc42cc554472551d91bb9f",
+      "path": "blobs/5d/5d2b0ddbb6bc47136f5fbade15a40cde23388f74ddfc42cc554472551d91bb9f.png",
+      "size": 208929
+    }
+  ],
+  "audit_root_hash": "930d4e7c4b51f7c1c54fd21b5c0599cde13e971649f46f3bafcb1c74cdd298c6",
+  "manifest_hash": "15b84ee4fec77fdc912045a54943101f6a9cc26fa0a570acd72e3bfb432e889e"
+}

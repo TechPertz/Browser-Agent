@@ -1,0 +1,51 @@
+{
+  "run_id": "run-34c5f250",
+  "task": {
+    "task_id": "adhoc-f4f2e8",
+    "task_name": "Ad-hoc task",
+    "prompt": "Open the GitHub PR URL from the input row. On the PR page, extract the author's GitHub\r\n  username from the header. Then:                                                        \r\n  1. Use `search` to query Google for: \"<author name> site:linkedin.com/in\"     \r\n  2. Use `goto_search_result` with index=0 and url_filter=\"linkedin.com/in\" to open the\r\n  first LinkedIn profile result.                                                         \r\n  3. Take a full-page screenshot of the LinkedIn profile into folder `<repo_slug>/` where\r\n   <repo_slug> is the repo path with slashes replaced by dashes.                         \r\n  4. Extract the profile fields from the visible content \u2014 set any field to null if it's \r\n  not visible.                                                                           \r\n                                                                                         \r\n  For any click whose target depends on page content, emit `visual_do` with a            \r\n  natural-language intent. Do NOT guess selectors.",
+    "extract_schema": {
+      "type": "object",
+      "properties": {
+        "author": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "linkedin_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "school": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "current_company": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tenure": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "author",
+        "linkedin_url",
+        "school",
+        "current_company",
+        "tenure"
+      ]
+    }
+  },
+  "max_samples_applied": 5
+}

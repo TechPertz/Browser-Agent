@@ -1,0 +1,54 @@
+{
+  "run_id": "run-75f0f6f9",
+  "task": {
+    "task_id": "adhoc-9d4582",
+    "task_name": "Ad-hoc task",
+    "prompt": "For each GitHub repo URL in the input, open the closed-PRs page and visit the 2 most recent closed PRs. For each PR, capture the author's GitHub username\r\n  from the PR page header. Then for each author:\r\n  1. Use `search` to query Google for `\"<author> site:linkedin.com/in\"` via Serper.\r\n  2. Use `goto_search_result` with index=0 to open their LinkedIn profile.\r\n  3. Take a full-page screenshot into folder `<repo>/<author>`.\r\n  4. Extract their current company, role, school, and tenure from the profile.\r\n  Save all evidence under a folder named after the repo (e.g., `facebook-react/`).",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "linkedin_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "school": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current_company": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tenure": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "author",
+          "linkedin_url",
+          "school",
+          "current_company",
+          "tenure"
+        ]
+      }
+    }
+  },
+  "max_samples_applied": 3
+}

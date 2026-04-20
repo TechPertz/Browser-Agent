@@ -1,0 +1,51 @@
+{
+  "run_id": "run-cc92dba8",
+  "task": {
+    "task_id": "adhoc-436686",
+    "task_name": "Ad-hoc task",
+    "prompt": "Open the GitHub PR URL from the input row. On the PR page, extract the author's GitHub \r\n  username from the PR header (the user who opened the pull request) and their display\r\n  name if shown.                                                                         \r\n                                                                         \r\n  Then:                                                                                  \r\n  1. Use `search` to query Google for: \"<author display name OR @username>               \r\n  site:linkedin.com/in\"                                                                  \r\n  first LinkedIn profile result.                                                         \r\n  3. Take a full-page screenshot of the LinkedIn profile into folder `<repo_slug>/` where\r\n   <repo_slug> is the repo path from the input with slashes replaced by dashes (e.g.     \r\n  garrytan-gstack).                                                                      \r\n  4. Extract the profile fields from the visible content \u2014 set any field to null if it's \r\n  not visible on the page.                                                              \r\n                                                                                         \r\n  For any click whose target depends on what's actually on the page (e.g. the author link\r\n   in the PR header), emit `visual_do` with a natural-language intent. Do NOT guess\r\n  selectors. Prefer `search` + `goto_search_result` over visiting google.com directly.",
+    "extract_schema": {
+      "type": "object",
+      "properties": {
+        "author": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "linkedin_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "school": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "current_company": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tenure": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "author",
+        "linkedin_url",
+        "school",
+        "current_company",
+        "tenure"
+      ]
+    }
+  },
+  "max_samples_applied": 2
+}

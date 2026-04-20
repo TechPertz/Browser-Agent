@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "run_id": "run-0e0c3bea",
+  "generated_at": "2026-04-20T00:01:15.312267+00:00",
+  "task": {
+    "task_id": "adhoc-918e43",
+    "task_name": "Ad-hoc task",
+    "prompt": "For each row in the input, go to input_data.url (a public GitHub issue                                                                                     \r\n  page). Take a full-page screenshot of the issue. Then extract the issue                                                                                    \r\n  title, the author's username, and the current state (open or closed). ",
+    "extract_schema": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "author": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "author",
+        "state"
+      ]
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 2,
+    "passed": 1,
+    "failed": 1,
+    "artifacts": 2
+  },
+  "samples": [
+    {
+      "sample_id": "run-0e0c3bea-00000",
+      "row_index": 0,
+      "verdict": "pass",
+      "verdict_reason": "All required fields (title, author, state) are populated and a full-page screenshot artifact exists to support them.",
+      "status": "done",
+      "evidence_count": 1,
+      "extracted": {
+        "title": "fix(lint): webkit linting",
+        "author": "pavelfeldman",
+        "state": "closed"
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-0e0c3bea-00001",
+      "row_index": 1,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 4,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "5e2fb99b3031189ca0dbded384ef514beb75e7123a1da08643b3af22949a207c",
+      "path": "blobs/5e/5e2fb99b3031189ca0dbded384ef514beb75e7123a1da08643b3af22949a207c.png",
+      "size": 141432
+    },
+    {
+      "sha256": "a7bffcd65f62be881919c0edc9573b80d4ac6dd10cbc85e4109b1019d2b64d4a",
+      "path": "blobs/a7/a7bffcd65f62be881919c0edc9573b80d4ac6dd10cbc85e4109b1019d2b64d4a.png",
+      "size": 154891
+    }
+  ],
+  "audit_root_hash": "4fd18b125cf0a02dffdc7b397566dd90437d5b4c88bc6e4d9c93db7836e83971",
+  "manifest_hash": "f9c61352e376b2ace247e8e0376ca637e0a5cbfcdbf0e4e6dc6043639ef8df7d"
+}

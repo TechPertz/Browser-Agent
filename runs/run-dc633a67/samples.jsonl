@@ -1,0 +1,2 @@
+{"sample_id": "run-dc633a67-00000", "row_index": 0, "verdict": null, "verdict_reason": null, "extracted": {}, "evidence": [], "evidence_count": 0, "status": "failed", "error": "plan cap reached (3 attempts)"}
+{"sample_id": "run-dc633a67-00001", "row_index": 1, "verdict": null, "verdict_reason": null, "extracted": {}, "evidence": [], "evidence_count": 0, "status": "failed", "error": "plan cap reached (3 attempts)"}

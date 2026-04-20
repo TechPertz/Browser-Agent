@@ -1,0 +1,33 @@
+{
+  "run_id": "run-debug3",
+  "task": {
+    "task_id": "gh-issue",
+    "task_name": "GitHub public issue \u2014 extract title, author, and state",
+    "prompt": "Navigate to the given GitHub issue URL, capture a screenshot of the issue\npage, and extract the issue's title, the author's username, and the current\nstate (open/closed). Evidence must include a full-page screenshot after the\npage has loaded.\n",
+    "extract_schema": {
+      "title": "Issue metadata",
+      "type": "object",
+      "required": [
+        "title",
+        "author",
+        "state"
+      ],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "open",
+            "closed"
+          ]
+        }
+      }
+    }
+  },
+  "max_samples_applied": 1
+}

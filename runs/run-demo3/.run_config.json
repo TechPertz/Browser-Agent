@@ -1,0 +1,54 @@
+{
+  "run_id": "run-demo3",
+  "task": {
+    "task_id": "demo3",
+    "task_name": "Closed PRs",
+    "prompt": "Go to input_data.url. Visit the top 2 closed pull requests on that page\nand screenshot each detail page. Save screenshots grouped into a folder\nnamed after the repo slug (input_data.repo with '/' replaced by '-').\nReturn one item per PR with repo, pr_number, author, date, pr_url.\n",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "repo",
+          "pr_number",
+          "author",
+          "date",
+          "pr_url"
+        ]
+      }
+    }
+  },
+  "max_samples_applied": 1
+}

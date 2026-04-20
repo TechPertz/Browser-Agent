@@ -1,0 +1,377 @@
+{
+  "version": 1,
+  "run_id": "run-ff6d6976",
+  "generated_at": "2026-04-19T23:58:35.933177+00:00",
+  "task": {
+    "task_id": "adhoc-710ca6",
+    "task_name": "Ad-hoc task",
+    "prompt": "Visit the top 2 closed pull requests on this page (different PRs, not the\r\n  same one twice). Take a viewport screenshot of each PR's detail page.\r\n  Save each screenshot in a folder named after the repo slug\r\n  (input_data.repo with \"/\" replaced by \"-\").",
+    "extract_schema": {}
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 15,
+    "passed": 14,
+    "failed": 1,
+    "artifacts": 34
+  },
+  "samples": [
+    {
+      "sample_id": "run-ff6d6976-00000",
+      "row_index": 0,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots were captured as requested.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-ff6d6976-00001",
+      "row_index": 1,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR detail screenshots were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-ff6d6976-00002",
+      "row_index": 2,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-ff6d6976-00003",
+      "row_index": 3,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots (pr1.png and pr2.png with different sha256 hashes) were captured.",
+      "status": "done",
+      "evidence_count": 4,
+      "extracted": {
+        "evidence_count": 4
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-ff6d6976-00004",
+      "row_index": 4,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots (pr1.png and pr2.png with different sha256 hashes) were captured, satisfying the requirement for top 2 closed PRs.",
+      "status": "done",
+      "evidence_count": 3,
+      "extracted": {
+        "evidence_count": 3
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-ff6d6976-00005",
+      "row_index": 5,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots (pr1.png with unique hash bca59fe and pr2.png with hash 3343a91) were captured for the task.",
+      "status": "done",
+      "evidence_count": 4,
+      "extracted": {
+        "evidence_count": 4
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-ff6d6976-00006",
+      "row_index": 6,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots (pr_155519.png and pr_155514.png) were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-ff6d6976-00007",
+      "row_index": 7,
+      "verdict": "pass",
+      "verdict_reason": "Two PR screenshot artifacts (pr1.png, pr2.png) were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-ff6d6976-00008",
+      "row_index": 8,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots (pr_21143.png and pr_21142.png) were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-ff6d6976-00009",
+      "row_index": 9,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-ff6d6976-00010",
+      "row_index": 10,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots (pr1.png and pr2.png with different hashes) were captured as required.",
+      "status": "done",
+      "evidence_count": 3,
+      "extracted": {
+        "evidence_count": 3
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-ff6d6976-00011",
+      "row_index": 11,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots (pr_7552.png and pr_7551.png) were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-ff6d6976-00012",
+      "row_index": 12,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 2,
+      "extracted": {},
+      "error": "unknown action None"
+    },
+    {
+      "sample_id": "run-ff6d6976-00013",
+      "row_index": 13,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR screenshots (pr_3100.png and pr_3095.png) were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-ff6d6976-00014",
+      "row_index": 14,
+      "verdict": "pass",
+      "verdict_reason": "Two distinct PR detail screenshots (pr_1387.png and pr_1386.png) were captured as required.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {
+        "evidence_count": 2
+      },
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "0f164fb98b8784e40b3f98ed15cb39c7110a617131bfbe15498ef481fbf4b797",
+      "path": "blobs/0f/0f164fb98b8784e40b3f98ed15cb39c7110a617131bfbe15498ef481fbf4b797.png",
+      "size": 179423
+    },
+    {
+      "sha256": "1482d554e2814edce42e8017465373c158410500d7c6b7528e8f57fa149c09c6",
+      "path": "blobs/14/1482d554e2814edce42e8017465373c158410500d7c6b7528e8f57fa149c09c6.png",
+      "size": 161180
+    },
+    {
+      "sha256": "1777c3b9815baeacfd44d10faa761fcf6666b9d048c44bf14dfb04765a19bbcf",
+      "path": "blobs/17/1777c3b9815baeacfd44d10faa761fcf6666b9d048c44bf14dfb04765a19bbcf.png",
+      "size": 128901
+    },
+    {
+      "sha256": "2beafd58518530cc13aaf8d368f9ce6660c3a7813b42e16ca50540737ce36ec9",
+      "path": "blobs/2b/2beafd58518530cc13aaf8d368f9ce6660c3a7813b42e16ca50540737ce36ec9.png",
+      "size": 174373
+    },
+    {
+      "sha256": "2dc5978d4a81ec2553c3d830a3f042d2b422fe0b318496860fa20c81d7254813",
+      "path": "blobs/2d/2dc5978d4a81ec2553c3d830a3f042d2b422fe0b318496860fa20c81d7254813.png",
+      "size": 249934
+    },
+    {
+      "sha256": "3343a91ebfd54eb8c30f8817c59867184392e03a4b5ccb054b2c58cc2821a21a",
+      "path": "blobs/33/3343a91ebfd54eb8c30f8817c59867184392e03a4b5ccb054b2c58cc2821a21a.png",
+      "size": 215889
+    },
+    {
+      "sha256": "3646d52b947123238979df34ce80a204749e49d8d2e5256f4fbf77304d7b39b7",
+      "path": "blobs/36/3646d52b947123238979df34ce80a204749e49d8d2e5256f4fbf77304d7b39b7.png",
+      "size": 180842
+    },
+    {
+      "sha256": "49375bdb499608df12fe036c64a3664d75becb54275dbcefad72a8a79a41c192",
+      "path": "blobs/49/49375bdb499608df12fe036c64a3664d75becb54275dbcefad72a8a79a41c192.png",
+      "size": 162090
+    },
+    {
+      "sha256": "58415ed131506589711db8c1fdc9d866436435ba5cb953c191a9f76eff0d5405",
+      "path": "blobs/58/58415ed131506589711db8c1fdc9d866436435ba5cb953c191a9f76eff0d5405.png",
+      "size": 180349
+    },
+    {
+      "sha256": "5a8622a3319cfeec9db88aaf3653e8fb3f3856e18ab3cc96d29eb74a2360f15d",
+      "path": "blobs/5a/5a8622a3319cfeec9db88aaf3653e8fb3f3856e18ab3cc96d29eb74a2360f15d.png",
+      "size": 209479
+    },
+    {
+      "sha256": "5b68009e76e5d07f27686085d25f2702795a0a18fe70a6fa6927db4db577a062",
+      "path": "blobs/5b/5b68009e76e5d07f27686085d25f2702795a0a18fe70a6fa6927db4db577a062.png",
+      "size": 182596
+    },
+    {
+      "sha256": "66d642afa9366bb252dbf9f2017c7a287892fbe72d32b43eee46d2ca6ed2aef9",
+      "path": "blobs/66/66d642afa9366bb252dbf9f2017c7a287892fbe72d32b43eee46d2ca6ed2aef9.png",
+      "size": 179426
+    },
+    {
+      "sha256": "6a3731966bf5940e80c031778f9fc2e1190db30a5bf8c840e4df87c719d26e66",
+      "path": "blobs/6a/6a3731966bf5940e80c031778f9fc2e1190db30a5bf8c840e4df87c719d26e66.png",
+      "size": 175289
+    },
+    {
+      "sha256": "70021ec921a217e643455e262788d002f6921fd1562977b22cd97350efbc6511",
+      "path": "blobs/70/70021ec921a217e643455e262788d002f6921fd1562977b22cd97350efbc6511.png",
+      "size": 131976
+    },
+    {
+      "sha256": "7a889d4ed50d49ab723f27e032db93d29ad26486934863922966d49212e0b251",
+      "path": "blobs/7a/7a889d4ed50d49ab723f27e032db93d29ad26486934863922966d49212e0b251.png",
+      "size": 165096
+    },
+    {
+      "sha256": "820f17c6f655b57ab11403ffb674f1f20d862339e78d05f8bc3e45435668fb45",
+      "path": "blobs/82/820f17c6f655b57ab11403ffb674f1f20d862339e78d05f8bc3e45435668fb45.png",
+      "size": 135525
+    },
+    {
+      "sha256": "892e09e34a2dd00c0961b11501b522336cf36f77dfa1320d93d2f3d0fb02b3cf",
+      "path": "blobs/89/892e09e34a2dd00c0961b11501b522336cf36f77dfa1320d93d2f3d0fb02b3cf.png",
+      "size": 214483
+    },
+    {
+      "sha256": "8a68f807c3d9b599996fa609b6474a7085a31d1406dcaa5265c84532e04b06ae",
+      "path": "blobs/8a/8a68f807c3d9b599996fa609b6474a7085a31d1406dcaa5265c84532e04b06ae.png",
+      "size": 193488
+    },
+    {
+      "sha256": "8c7d37cc19a7693d14340fa82f984acaf31b10086d801c41f799958279b80de1",
+      "path": "blobs/8c/8c7d37cc19a7693d14340fa82f984acaf31b10086d801c41f799958279b80de1.png",
+      "size": 290643
+    },
+    {
+      "sha256": "97c23c4775c0b81bdc246c01da1476afdc3369a3f5c000a583ce71fa44b69f15",
+      "path": "blobs/97/97c23c4775c0b81bdc246c01da1476afdc3369a3f5c000a583ce71fa44b69f15.png",
+      "size": 209068
+    },
+    {
+      "sha256": "a4a1a59f671503fa897cf7f9b10e80fbf69d2cbf8150d92f03b95949acff9f6d",
+      "path": "blobs/a4/a4a1a59f671503fa897cf7f9b10e80fbf69d2cbf8150d92f03b95949acff9f6d.png",
+      "size": 155171
+    },
+    {
+      "sha256": "ac10661a88cc644812bd14960201627ce987f52b9b5b7e43864141a8990d4c18",
+      "path": "blobs/ac/ac10661a88cc644812bd14960201627ce987f52b9b5b7e43864141a8990d4c18.png",
+      "size": 178801
+    },
+    {
+      "sha256": "b2bcda655ca7a28fabf7fffe753ce27661bb16b544c83b4dd6fa45e96aa90537",
+      "path": "blobs/b2/b2bcda655ca7a28fabf7fffe753ce27661bb16b544c83b4dd6fa45e96aa90537.png",
+      "size": 137279
+    },
+    {
+      "sha256": "b30557ec64787821d3c0e2e669af7423f557fa528caba825d7e494c9bb859502",
+      "path": "blobs/b3/b30557ec64787821d3c0e2e669af7423f557fa528caba825d7e494c9bb859502.png",
+      "size": 215362
+    },
+    {
+      "sha256": "bca59fe5e5fbfcb39bf5d84364632ad292d04e224f71094070c19e8b0dc8d0ac",
+      "path": "blobs/bc/bca59fe5e5fbfcb39bf5d84364632ad292d04e224f71094070c19e8b0dc8d0ac.png",
+      "size": 202999
+    },
+    {
+      "sha256": "c0df55c4e2bd8a4c800aae273a9ca4bc7997a1c59f0f3a7383c2b4401c3335a3",
+      "path": "blobs/c0/c0df55c4e2bd8a4c800aae273a9ca4bc7997a1c59f0f3a7383c2b4401c3335a3.png",
+      "size": 179984
+    },
+    {
+      "sha256": "c3a6179b6b551156cb60f41f30ff37fa33df42e82f4bfaba08cade924bdf8144",
+      "path": "blobs/c3/c3a6179b6b551156cb60f41f30ff37fa33df42e82f4bfaba08cade924bdf8144.png",
+      "size": 205553
+    },
+    {
+      "sha256": "c66e99e0209de052b285ace4d30d363b24b2bfc7dc1aa70367c5adedc07029eb",
+      "path": "blobs/c6/c66e99e0209de052b285ace4d30d363b24b2bfc7dc1aa70367c5adedc07029eb.png",
+      "size": 218686
+    },
+    {
+      "sha256": "da5d25d1e84534e088e389f92429e7873fee227f85ff6bbf274225c275aedbf0",
+      "path": "blobs/da/da5d25d1e84534e088e389f92429e7873fee227f85ff6bbf274225c275aedbf0.png",
+      "size": 125262
+    },
+    {
+      "sha256": "db83fa20e73e81ed744fcb4e12a002a71b84c3e92cbff6c7b68ef4e6c358c089",
+      "path": "blobs/db/db83fa20e73e81ed744fcb4e12a002a71b84c3e92cbff6c7b68ef4e6c358c089.png",
+      "size": 155286
+    },
+    {
+      "sha256": "e0b055e94e3f646bcfce75f43666d6db43d612f070e64708573c7c1c33d9dc22",
+      "path": "blobs/e0/e0b055e94e3f646bcfce75f43666d6db43d612f070e64708573c7c1c33d9dc22.png",
+      "size": 187606
+    },
+    {
+      "sha256": "e14c9095258a47cea7ff32f234e324880306999809a544d616889293599a8212",
+      "path": "blobs/e1/e14c9095258a47cea7ff32f234e324880306999809a544d616889293599a8212.png",
+      "size": 165529
+    },
+    {
+      "sha256": "f50630b1c547210447bedabc4e0fbb72a2303f69c65718288dcc555ba7d31292",
+      "path": "blobs/f5/f50630b1c547210447bedabc4e0fbb72a2303f69c65718288dcc555ba7d31292.png",
+      "size": 188337
+    },
+    {
+      "sha256": "f7e0064499877bc3bac113e457e9a3fe7aa199a8c4ac014bfc8044ac7958a5a2",
+      "path": "blobs/f7/f7e0064499877bc3bac113e457e9a3fe7aa199a8c4ac014bfc8044ac7958a5a2.png",
+      "size": 204616
+    }
+  ],
+  "audit_root_hash": "a5be21cab5869cfa6dcacd2e3563d24ae9685de0702a1e69758e90134d9156a9",
+  "manifest_hash": "26ddc5829dbb10df81098957f48c3bc5576ecd16b1a8d1cb1bda2941775c4915"
+}

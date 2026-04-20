@@ -1,0 +1,185 @@
+{
+  "version": 1,
+  "run_id": "run-0bc2622a",
+  "generated_at": "2026-04-20T00:54:09.862684+00:00",
+  "task": {
+    "task_id": "adhoc-ab1044",
+    "task_name": "Ad-hoc task",
+    "prompt": "Visit the top 6 closed pull requests on this page and read off each                                                                                        \r\n  PR's author username. For each author: use the search action to find                                                                                       \r\n  \"<author> site:linkedin.com\", then use goto_search_result with                                                                                             \r\n  url_filter=\"/in/\" to navigate to the first LinkedIn profile in the\r\n  results, then take a viewport screenshot. Save each screenshot under                                                                                       \r\n  a folder named after the repo slug (input_data.repo with \"/\" replaced                  \r\n  by \"-\"). Read the profile and return one item per author with repo,                                                                                        \r\n  author, linkedin_url, school (most recent education entry),                                                                                                \r\n  current_company (top role in the experience section), and tenure                                                                                           \r\n  (how long at that company).",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "linkedin_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "school": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current_company": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tenure": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "repo",
+          "author",
+          "linkedin_url",
+          "school",
+          "current_company",
+          "tenure"
+        ]
+      }
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 10,
+    "passed": 0,
+    "failed": 10,
+    "artifacts": 1
+  },
+  "samples": [
+    {
+      "sample_id": "run-0bc2622a-00000",
+      "row_index": 0,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan parse: Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "sample_id": "run-0bc2622a-00001",
+      "row_index": 1,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    },
+    {
+      "sample_id": "run-0bc2622a-00002",
+      "row_index": 2,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    },
+    {
+      "sample_id": "run-0bc2622a-00003",
+      "row_index": 3,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan parse: Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "sample_id": "run-0bc2622a-00004",
+      "row_index": 4,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan parse: Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "sample_id": "run-0bc2622a-00005",
+      "row_index": 5,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    },
+    {
+      "sample_id": "run-0bc2622a-00006",
+      "row_index": 6,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan parse: Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "sample_id": "run-0bc2622a-00007",
+      "row_index": 7,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    },
+    {
+      "sample_id": "run-0bc2622a-00008",
+      "row_index": 8,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan parse: Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "sample_id": "run-0bc2622a-00009",
+      "row_index": 9,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan parse: Expecting value: line 1 column 1 (char 0)"
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "c58d96c393a851e6253d9d78645e8d32ecf1901d29354c896f253bd68b62c60f",
+      "path": "blobs/c5/c58d96c393a851e6253d9d78645e8d32ecf1901d29354c896f253bd68b62c60f.png",
+      "size": 174638
+    }
+  ],
+  "audit_root_hash": "cb04448434050a7ea0f6c4bbd3d0fbaebc92de3f301def63b06f3fdd6d4138ac",
+  "manifest_hash": "5eefcd47b36b1cf221718f88d63acafcacb46f34770de47d268c9caa139ea0ef"
+}

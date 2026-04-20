@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "run_id": "run-demo-auto",
+  "generated_at": "2026-04-19T23:13:27.792593+00:00",
+  "task": {
+    "task_id": "demo-auto",
+    "task_name": "Closed PRs demo",
+    "prompt": "For each repo, open input_data.url (the closed pull requests listing).\nOpen the top 2 closed pull requests in turn (click each card in order).\nOn each PR detail page, take a viewport screenshot saved as\n<slug>/pr_NN where <slug> is input_data.repo with \"/\" replaced by \"-\"\nand NN is 01, 02. Return one item per PR with repo, pr_number, author,\ndate, pr_url.\n",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "repo",
+          "pr_number",
+          "author",
+          "date",
+          "pr_url"
+        ]
+      }
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 1,
+    "passed": 0,
+    "failed": 1,
+    "artifacts": 1
+  },
+  "samples": [
+    {
+      "sample_id": "run-demo-auto-00000",
+      "row_index": 0,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 1,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "5d2b0ddbb6bc47136f5fbade15a40cde23388f74ddfc42cc554472551d91bb9f",
+      "path": "blobs/5d/5d2b0ddbb6bc47136f5fbade15a40cde23388f74ddfc42cc554472551d91bb9f.png",
+      "size": 208929
+    }
+  ],
+  "audit_root_hash": "fb227da88c2216189118b65f6b2f36d9a5273db0f726f27e510256ccad130047",
+  "manifest_hash": "e927fa9dd15c302b11e3af1f2d4eaa7d8b15625f5286b9dd0b2510ba968d61bd"
+}

@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "run_id": "run-1f875bc2",
+  "generated_at": "2026-04-20T00:46:03.759394+00:00",
+  "task": {
+    "task_id": "adhoc-7d6c21",
+    "task_name": "Ad-hoc task",
+    "prompt": "Visit the top 2 closed pull requests on this page and read off each                                                                                        \r\n  PR's author username. For each author, run a search for                                                                                                    \r\n  \"<author> site:linkedin.com\" using the search action, then go to the                                                                                       \r\n  first result URL whose path contains \"/in/\". Take a viewport                                                                                               \r\n  screenshot of that LinkedIn profile page. Save each screenshot under                                                                                       \r\n  a folder named after the repo slug (input_data.repo with \"/\" replaced                                                                                      \r\n  by \"-\"). Read the profile and return one item per author with repo,                                                                                        \r\n  author, linkedin_url, school (most recent education entry),                                                                                              \r\n  current_company (top role in the experience section), and tenure                                                                                           \r\n  (how long at that company).",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "linkedin_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "school": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current_company": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tenure": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "repo",
+          "author",
+          "linkedin_url",
+          "school",
+          "current_company",
+          "tenure"
+        ]
+      }
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 2,
+    "passed": 0,
+    "failed": 2,
+    "artifacts": 1
+  },
+  "samples": [
+    {
+      "sample_id": "run-1f875bc2-00000",
+      "row_index": 0,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    },
+    {
+      "sample_id": "run-1f875bc2-00001",
+      "row_index": 1,
+      "verdict": "fail",
+      "verdict_reason": "Extracted fields are empty and the two evidence screenshots share identical sha256 hashes, indicating the same image was saved for both authors rather than distinct LinkedIn profile captures.",
+      "status": "done",
+      "evidence_count": 2,
+      "extracted": {},
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "af5412c328f135cf2fb2f036e582545db801455a5cf3126777fdb36f36714e91",
+      "path": "blobs/af/af5412c328f135cf2fb2f036e582545db801455a5cf3126777fdb36f36714e91.png",
+      "size": 197766
+    }
+  ],
+  "audit_root_hash": "b82babd136b3ccdb7f97f01167a308fe6dd0b023a751261643d1eddd763d8a31",
+  "manifest_hash": "99caaafb75b88eafef19c828ab49fe034f71d36e06b287ad6f64216326734f1c"
+}

@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "run_id": "run-verify-fast",
+  "generated_at": "2026-04-19T23:54:57.456417+00:00",
+  "task": {
+    "task_id": "verify-fast-demo",
+    "task_name": "GH issue NLP",
+    "prompt": "Go to input_data.url (a public GitHub issue). Take a full-page screenshot\nof the issue page. Extract the issue title, the author's username, and\nthe current state (open or closed).\n",
+    "extract_schema": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "author": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "author",
+        "state"
+      ]
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 2,
+    "passed": 1,
+    "failed": 1,
+    "artifacts": 2
+  },
+  "samples": [
+    {
+      "sample_id": "run-verify-fast-00000",
+      "row_index": 0,
+      "verdict": "pass",
+      "verdict_reason": "All required fields are populated with plausible values and a full-page screenshot artifact is present as evidence.",
+      "status": "done",
+      "evidence_count": 1,
+      "extracted": {
+        "title": "fix(lint): webkit linting",
+        "author": "pavelfeldman",
+        "state": "closed"
+      },
+      "error": null
+    },
+    {
+      "sample_id": "run-verify-fast-00001",
+      "row_index": 1,
+      "verdict": "fail",
+      "verdict_reason": "State should be 'open' or 'closed' per task, but 'Merged' was returned (also suggests it's a PR, not an issue).",
+      "status": "done",
+      "evidence_count": 1,
+      "extracted": {
+        "title": "add simple example notebook",
+        "author": "hwchase17",
+        "state": "Merged"
+      },
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "a7bffcd65f62be881919c0edc9573b80d4ac6dd10cbc85e4109b1019d2b64d4a",
+      "path": "blobs/a7/a7bffcd65f62be881919c0edc9573b80d4ac6dd10cbc85e4109b1019d2b64d4a.png",
+      "size": 154891
+    },
+    {
+      "sha256": "c7ac98b3c2819cc0b0209035649090fec5e3d7a708e2db21ef2600f4f802b31b",
+      "path": "blobs/c7/c7ac98b3c2819cc0b0209035649090fec5e3d7a708e2db21ef2600f4f802b31b.png",
+      "size": 176167
+    }
+  ],
+  "audit_root_hash": "07af5a68044668664f6df79015269fb23df9fcffa58f41abb4d4bc75d9ee46e7",
+  "manifest_hash": "1c565b61e28ebb5f9522ff59219f882142b7e3b07d46095b9c03ea4ee4cb89cc"
+}

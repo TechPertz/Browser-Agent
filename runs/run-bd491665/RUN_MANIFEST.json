@@ -1,0 +1,264 @@
+{
+  "version": 1,
+  "run_id": "run-bd491665",
+  "generated_at": "2026-04-20T01:25:04.117431+00:00",
+  "task": {
+    "task_id": "adhoc-2b2511",
+    "task_name": "Ad-hoc task",
+    "prompt": "  For each GitHub repo URL in the input, open the closed-PRs page and visit the 2 most recent closed PRs. For each PR, capture the author's GitHub username\r\n  from the PR page header. Then for each author:                                                                                                           \r\n  1. Use `search` to query Google for `\"<author> site:linkedin.com/in\"` via Serper.                                                                          \r\n  2. Use `goto_search_result` with index=0 to open their LinkedIn profile.                                                                                   \r\n  3. Take a full-page screenshot into folder `<repo>/<author>`.                                                                                              \r\n  4. Extract their current company, role, school, and tenure from the profile.                                                                               \r\n  Save all evidence under a folder named after the repo (e.g., `facebook-react/`).                                                                           ",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "author: GitHub username of the PR": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_url: URL of the closed pr": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pr_title: Title of the PR": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "linkedin_url: LinkedIn profile URL": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current_company: Current employer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current_role: Current job title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "school: Most recent school": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tenure: duration at current company": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "author: GitHub username of the PR",
+          "pr_url: URL of the closed pr",
+          "pr_title: Title of the PR",
+          "linkedin_url: LinkedIn profile URL",
+          "current_company: Current employer",
+          "current_role: Current job title",
+          "school: Most recent school",
+          "tenure: duration at current company"
+        ]
+      }
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 3,
+    "passed": 0,
+    "failed": 3,
+    "artifacts": 28
+  },
+  "samples": [
+    {
+      "sample_id": "run-bd491665-00000",
+      "row_index": 0,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 20,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    },
+    {
+      "sample_id": "run-bd491665-00001",
+      "row_index": 1,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 10,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    },
+    {
+      "sample_id": "run-bd491665-00002",
+      "row_index": 2,
+      "verdict": "fail",
+      "verdict_reason": "Extracted fields are empty, so required author/company/role/school/tenure data is missing despite screenshots.",
+      "status": "done",
+      "evidence_count": 13,
+      "extracted": {},
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "01bf39670c9a1cb2709434b0fc35fc04cbbde219312c0a067ebea5c2b8a8ecb8",
+      "path": "blobs/01/01bf39670c9a1cb2709434b0fc35fc04cbbde219312c0a067ebea5c2b8a8ecb8.png",
+      "size": 208980
+    },
+    {
+      "sha256": "1e3ceb93550f63114e15d10e13e634dd6ab3d9f351b956874cac54b66c14e604",
+      "path": "blobs/1e/1e3ceb93550f63114e15d10e13e634dd6ab3d9f351b956874cac54b66c14e604.png",
+      "size": 164968
+    },
+    {
+      "sha256": "251eb0134156728868c2c3d6d848ebb314088eb882e04854ccde3fe98fc1022f",
+      "path": "blobs/25/251eb0134156728868c2c3d6d848ebb314088eb882e04854ccde3fe98fc1022f.png",
+      "size": 182714
+    },
+    {
+      "sha256": "2a5f30e1f3642ab4bfe2d74a09abb941a16d3d8cba2ae66e69704c3702715aa4",
+      "path": "blobs/2a/2a5f30e1f3642ab4bfe2d74a09abb941a16d3d8cba2ae66e69704c3702715aa4.png",
+      "size": 183214
+    },
+    {
+      "sha256": "2d5a58e23c8c814fd4f9cdfc8350beeb86171e57d8c7590084a2a596dc56a7f6",
+      "path": "blobs/2d/2d5a58e23c8c814fd4f9cdfc8350beeb86171e57d8c7590084a2a596dc56a7f6.png",
+      "size": 159387
+    },
+    {
+      "sha256": "3542153c8ef85c29d00d381e699c6848e2990bec581ee609209a367c327d5690",
+      "path": "blobs/35/3542153c8ef85c29d00d381e699c6848e2990bec581ee609209a367c327d5690.png",
+      "size": 363744
+    },
+    {
+      "sha256": "64a391640e3901dc1fd2968b889414e036ef852c49c9c8ce6332e50cd494dd66",
+      "path": "blobs/64/64a391640e3901dc1fd2968b889414e036ef852c49c9c8ce6332e50cd494dd66.png",
+      "size": 573615
+    },
+    {
+      "sha256": "66917919c9dde09f5d1f47370e45c7780ff9a7673207d6e1b1d3a253c1a2c638",
+      "path": "blobs/66/66917919c9dde09f5d1f47370e45c7780ff9a7673207d6e1b1d3a253c1a2c638.png",
+      "size": 41072
+    },
+    {
+      "sha256": "683d811dcaa7a9e8ab6d08462c33c585541301b513572081b774f2dcfb3f30a5",
+      "path": "blobs/68/683d811dcaa7a9e8ab6d08462c33c585541301b513572081b774f2dcfb3f30a5.png",
+      "size": 222344
+    },
+    {
+      "sha256": "6b05b50bad51fc2d48dcf160eb9d294bdc912002d6d1656619fa0f6904d5c1c3",
+      "path": "blobs/6b/6b05b50bad51fc2d48dcf160eb9d294bdc912002d6d1656619fa0f6904d5c1c3.png",
+      "size": 244578
+    },
+    {
+      "sha256": "6c2f5d15506d53e460cf8d9f471bfd0333d567d87c5bf6ed159de2d32fb6adef",
+      "path": "blobs/6c/6c2f5d15506d53e460cf8d9f471bfd0333d567d87c5bf6ed159de2d32fb6adef.png",
+      "size": 383494
+    },
+    {
+      "sha256": "77cb31fd849dcda4eba8bf1dee35311db9e3d9b3d2e5adb8a37faecc8a4c02ca",
+      "path": "blobs/77/77cb31fd849dcda4eba8bf1dee35311db9e3d9b3d2e5adb8a37faecc8a4c02ca.png",
+      "size": 187825
+    },
+    {
+      "sha256": "85419541d79a5b3b7594475c3efb3580d26a8c02d50feaee0f7ab58d1042b293",
+      "path": "blobs/85/85419541d79a5b3b7594475c3efb3580d26a8c02d50feaee0f7ab58d1042b293.png",
+      "size": 247363
+    },
+    {
+      "sha256": "88cfa60197bbfc94079a6e3e2532b3f80b04f3eb9ffd574b71814011f28ce84f",
+      "path": "blobs/88/88cfa60197bbfc94079a6e3e2532b3f80b04f3eb9ffd574b71814011f28ce84f.png",
+      "size": 247425
+    },
+    {
+      "sha256": "8d42856f1da44e73696b4887bebe08c9ef780cb7a1ef342a52830deab4f9b41a",
+      "path": "blobs/8d/8d42856f1da44e73696b4887bebe08c9ef780cb7a1ef342a52830deab4f9b41a.png",
+      "size": 199476
+    },
+    {
+      "sha256": "902e3e9f5b4a145c7fc086c0d6ff7b9fc2331ce2b1d646a9836646b2f817894f",
+      "path": "blobs/90/902e3e9f5b4a145c7fc086c0d6ff7b9fc2331ce2b1d646a9836646b2f817894f.png",
+      "size": 144606
+    },
+    {
+      "sha256": "94b283c00b07d0fc030e08a53ad4924f4bd8edf3e43b6f2aef6d623369e330df",
+      "path": "blobs/94/94b283c00b07d0fc030e08a53ad4924f4bd8edf3e43b6f2aef6d623369e330df.png",
+      "size": 174711
+    },
+    {
+      "sha256": "9676499d7b76f8d501a3b526988d0fe04fb2a7cf40baef5814607413c2c03d55",
+      "path": "blobs/96/9676499d7b76f8d501a3b526988d0fe04fb2a7cf40baef5814607413c2c03d55.png",
+      "size": 116183
+    },
+    {
+      "sha256": "999476784334baefc07254080ef98b63f3913da3137eca11af5acb8dee80cd1b",
+      "path": "blobs/99/999476784334baefc07254080ef98b63f3913da3137eca11af5acb8dee80cd1b.png",
+      "size": 213459
+    },
+    {
+      "sha256": "a0aefdd8429fd513736bee0e73f5bb175d677b651970d0c9c6c428f7dae8fe01",
+      "path": "blobs/a0/a0aefdd8429fd513736bee0e73f5bb175d677b651970d0c9c6c428f7dae8fe01.png",
+      "size": 41728
+    },
+    {
+      "sha256": "b3d041335f49eea13a4b9018ff71bbdd85878d7c563bb8b52de64e2fc416646a",
+      "path": "blobs/b3/b3d041335f49eea13a4b9018ff71bbdd85878d7c563bb8b52de64e2fc416646a.png",
+      "size": 275584
+    },
+    {
+      "sha256": "c55185ef0f69289eacf563695bb2131037d3b7608c9c4b6207ef68d4e423f59e",
+      "path": "blobs/c5/c55185ef0f69289eacf563695bb2131037d3b7608c9c4b6207ef68d4e423f59e.png",
+      "size": 220748
+    },
+    {
+      "sha256": "c7ae54df3e54b361784c670805bafd89f324f2e96f06cf0d68e76cb12113ed61",
+      "path": "blobs/c7/c7ae54df3e54b361784c670805bafd89f324f2e96f06cf0d68e76cb12113ed61.png",
+      "size": 129829
+    },
+    {
+      "sha256": "cb6ed4fd92a2d20f856ba6b798e445b3596bc4130a95e61920045bf613518039",
+      "path": "blobs/cb/cb6ed4fd92a2d20f856ba6b798e445b3596bc4130a95e61920045bf613518039.png",
+      "size": 199023
+    },
+    {
+      "sha256": "cd70078351376862f9f949efe452ed975652e843e9de959b9bd5c6c25c730256",
+      "path": "blobs/cd/cd70078351376862f9f949efe452ed975652e843e9de959b9bd5c6c25c730256.png",
+      "size": 195632
+    },
+    {
+      "sha256": "dec86ed604489ac5ffecd8e6f2e66972f6c2035c58073512d334ea420985fab3",
+      "path": "blobs/de/dec86ed604489ac5ffecd8e6f2e66972f6c2035c58073512d334ea420985fab3.png",
+      "size": 383288
+    },
+    {
+      "sha256": "edf193cfd7e945d5bf7171d79c6911e47abde97d9d045c0b45ffb62cf669fc49",
+      "path": "blobs/ed/edf193cfd7e945d5bf7171d79c6911e47abde97d9d045c0b45ffb62cf669fc49.png",
+      "size": 639203
+    },
+    {
+      "sha256": "f1a448d39e1887ea8887e640544655653ba08edd1203aa97bc8ac7a93ce4419e",
+      "path": "blobs/f1/f1a448d39e1887ea8887e640544655653ba08edd1203aa97bc8ac7a93ce4419e.png",
+      "size": 209700
+    }
+  ],
+  "audit_root_hash": "d90bfd9fa50e9f52bc0f9e192e2ba9313dad49e58d6f565ab4c96d538692e73c",
+  "manifest_hash": "e704940d5a9ed26a4e09d6acff424cc708579bf517d6401b87d45d360ca159b9"
+}

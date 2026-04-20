@@ -1,0 +1,183 @@
+{
+  "version": 1,
+  "run_id": "run-75f0f6f9",
+  "generated_at": "2026-04-20T01:39:30.857594+00:00",
+  "task": {
+    "task_id": "adhoc-9d4582",
+    "task_name": "Ad-hoc task",
+    "prompt": "For each GitHub repo URL in the input, open the closed-PRs page and visit the 2 most recent closed PRs. For each PR, capture the author's GitHub username\r\n  from the PR page header. Then for each author:\r\n  1. Use `search` to query Google for `\"<author> site:linkedin.com/in\"` via Serper.\r\n  2. Use `goto_search_result` with index=0 to open their LinkedIn profile.\r\n  3. Take a full-page screenshot into folder `<repo>/<author>`.\r\n  4. Extract their current company, role, school, and tenure from the profile.\r\n  Save all evidence under a folder named after the repo (e.g., `facebook-react/`).",
+    "extract_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "linkedin_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "school": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current_company": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tenure": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "author",
+          "linkedin_url",
+          "school",
+          "current_company",
+          "tenure"
+        ]
+      }
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 3,
+    "passed": 0,
+    "failed": 3,
+    "artifacts": 16
+  },
+  "samples": [
+    {
+      "sample_id": "run-75f0f6f9-00000",
+      "row_index": 0,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    },
+    {
+      "sample_id": "run-75f0f6f9-00001",
+      "row_index": 1,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 0,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    },
+    {
+      "sample_id": "run-75f0f6f9-00002",
+      "row_index": 2,
+      "verdict": null,
+      "verdict_reason": null,
+      "status": "failed",
+      "evidence_count": 50,
+      "extracted": {},
+      "error": "plan cap reached (3 attempts)"
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "046521b14ba597c2fb4f406da063d6a26fdb758f9a2e94e8cf233ae99c07ce4c",
+      "path": "blobs/04/046521b14ba597c2fb4f406da063d6a26fdb758f9a2e94e8cf233ae99c07ce4c.png",
+      "size": 222392
+    },
+    {
+      "sha256": "1e3ceb93550f63114e15d10e13e634dd6ab3d9f351b956874cac54b66c14e604",
+      "path": "blobs/1e/1e3ceb93550f63114e15d10e13e634dd6ab3d9f351b956874cac54b66c14e604.png",
+      "size": 164968
+    },
+    {
+      "sha256": "3542153c8ef85c29d00d381e699c6848e2990bec581ee609209a367c327d5690",
+      "path": "blobs/35/3542153c8ef85c29d00d381e699c6848e2990bec581ee609209a367c327d5690.png",
+      "size": 363744
+    },
+    {
+      "sha256": "63980e2658d372bc9f244ec758eff21c17ce27fb4967e1ec5f41c263243593b1",
+      "path": "blobs/63/63980e2658d372bc9f244ec758eff21c17ce27fb4967e1ec5f41c263243593b1.png",
+      "size": 222401
+    },
+    {
+      "sha256": "648a512dc7fe903240da1d50e4b077b32f0206038c4f7d2682c7a553db727650",
+      "path": "blobs/64/648a512dc7fe903240da1d50e4b077b32f0206038c4f7d2682c7a553db727650.png",
+      "size": 159726
+    },
+    {
+      "sha256": "64a391640e3901dc1fd2968b889414e036ef852c49c9c8ce6332e50cd494dd66",
+      "path": "blobs/64/64a391640e3901dc1fd2968b889414e036ef852c49c9c8ce6332e50cd494dd66.png",
+      "size": 573615
+    },
+    {
+      "sha256": "66917919c9dde09f5d1f47370e45c7780ff9a7673207d6e1b1d3a253c1a2c638",
+      "path": "blobs/66/66917919c9dde09f5d1f47370e45c7780ff9a7673207d6e1b1d3a253c1a2c638.png",
+      "size": 41072
+    },
+    {
+      "sha256": "6b05b50bad51fc2d48dcf160eb9d294bdc912002d6d1656619fa0f6904d5c1c3",
+      "path": "blobs/6b/6b05b50bad51fc2d48dcf160eb9d294bdc912002d6d1656619fa0f6904d5c1c3.png",
+      "size": 244578
+    },
+    {
+      "sha256": "7167375c3fb5c965e9e146fb85dbc192cee67d37f44d0b4fb488cd68aa0c4f07",
+      "path": "blobs/71/7167375c3fb5c965e9e146fb85dbc192cee67d37f44d0b4fb488cd68aa0c4f07.png",
+      "size": 172806
+    },
+    {
+      "sha256": "8ee8315a7aa9ba1fbd0dc1af08415ec6016a6f9e2c312a5c5f0be2a7bfd114bf",
+      "path": "blobs/8e/8ee8315a7aa9ba1fbd0dc1af08415ec6016a6f9e2c312a5c5f0be2a7bfd114bf.png",
+      "size": 222405
+    },
+    {
+      "sha256": "902e3e9f5b4a145c7fc086c0d6ff7b9fc2331ce2b1d646a9836646b2f817894f",
+      "path": "blobs/90/902e3e9f5b4a145c7fc086c0d6ff7b9fc2331ce2b1d646a9836646b2f817894f.png",
+      "size": 144606
+    },
+    {
+      "sha256": "920e7747ff03493da4f91dcc05c63837a59e4b333547702b401135e4bfc1200a",
+      "path": "blobs/92/920e7747ff03493da4f91dcc05c63837a59e4b333547702b401135e4bfc1200a.png",
+      "size": 177028
+    },
+    {
+      "sha256": "9528ddc81a68e264ae3182b115f74743de0ba7171444fa997728e6971a815fae",
+      "path": "blobs/95/9528ddc81a68e264ae3182b115f74743de0ba7171444fa997728e6971a815fae.png",
+      "size": 171332
+    },
+    {
+      "sha256": "9676499d7b76f8d501a3b526988d0fe04fb2a7cf40baef5814607413c2c03d55",
+      "path": "blobs/96/9676499d7b76f8d501a3b526988d0fe04fb2a7cf40baef5814607413c2c03d55.png",
+      "size": 116183
+    },
+    {
+      "sha256": "af080440d8304f6e641f04426af03f0915ecdd79b0052c06897a28848311ddee",
+      "path": "blobs/af/af080440d8304f6e641f04426af03f0915ecdd79b0052c06897a28848311ddee.png",
+      "size": 362614
+    },
+    {
+      "sha256": "cdd83e51d0814a8a8b7f0bb6f0a19241d90b70803dd3eb641f8af718267c6860",
+      "path": "blobs/cd/cdd83e51d0814a8a8b7f0bb6f0a19241d90b70803dd3eb641f8af718267c6860.png",
+      "size": 169584
+    }
+  ],
+  "audit_root_hash": "697784831a23c8fffba8b2677299d0087af88f3d97b48f1aa59fecf220da9986",
+  "manifest_hash": "7c2a2afdff8dd18da149b8deb83675b769807e826756d63e7813bd33339785ff"
+}

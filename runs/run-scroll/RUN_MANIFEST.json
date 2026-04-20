@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "run_id": "run-scroll",
+  "generated_at": "2026-04-19T22:18:40.872719+00:00",
+  "task": {
+    "task_id": "gh-issue",
+    "task_name": "GitHub public issue — extract title, author, and state",
+    "prompt": "Navigate to the given GitHub issue URL, capture a screenshot of the issue\npage, and extract the issue's title, the author's username, and the current\nstate (open/closed). Evidence must include a full-page screenshot after the\npage has loaded.\n",
+    "extract_schema": {
+      "title": "Issue metadata",
+      "type": "object",
+      "required": [
+        "title",
+        "author",
+        "state"
+      ],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "open",
+            "closed"
+          ]
+        }
+      }
+    }
+  },
+  "profile_excerpt": {
+    "planner": "claude-opus-4-7",
+    "browser_backend": "local",
+    "concurrency": 4,
+    "distributed": false
+  },
+  "totals": {
+    "samples": 1,
+    "passed": 1,
+    "failed": 0,
+    "artifacts": 1
+  },
+  "samples": [
+    {
+      "sample_id": "run-scroll-00000",
+      "row_index": 0,
+      "verdict": "pass",
+      "verdict_reason": "All required fields (title, author, state) are populated and a full-page screenshot evidence artifact exists.",
+      "status": "done",
+      "evidence_count": 1,
+      "extracted": {
+        "title": "fix(lint): webkit linting",
+        "author": "pavelfeldman",
+        "state": "closed"
+      },
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "sha256": "823bf3bf19e87856b0e69e74ae7d6b858b3a11c3ad8ada923b8d317d39dc116f",
+      "path": "blobs/82/823bf3bf19e87856b0e69e74ae7d6b858b3a11c3ad8ada923b8d317d39dc116f.png",
+      "size": 190575
+    }
+  ],
+  "audit_root_hash": "fa33407f60f8749cf69d124e6fd44f0bc0b0c44031b2e3f1f3f58204e0824039",
+  "manifest_hash": "4efd8f754f88ed8ea9feb739c11edc959c525a0cb2cf9f2767822ac6cdf609db"
+}
