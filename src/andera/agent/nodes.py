@@ -53,6 +53,62 @@ NON_DOM_CHANGING_ACTIONS = {
     # navigation, which is handled like `goto`. Exclude from fast-path.
 }
 
+# Allowed action names. Mirrored into PLAN_RESPONSE_SCHEMA so the
+# planner LLM is physically forced (via response_format=json_schema)
+# to pick from this enum — no more invented actions like
+# "goto_first_linkedin_in_result" or plans with bare-string steps.
+ALLOWED_ACTIONS = sorted({
+    "goto", "click", "type",
+    "screenshot", "screenshot_all",
+    "scroll", "scroll_to",
+    "visit_each_link",
+    "search", "goto_search_result",
+    "extract", "done",
+})
+
+# Response schema the planner MUST satisfy. Wrapped in a top-level
+# object because some providers (incl. Anthropic through LiteLLM)
+# don't support top-level array outputs in strict JSON mode.
+PLAN_RESPONSE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "steps": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 40,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ALLOWED_ACTIONS},
+                    # Loose string fields — each action uses a subset; the
+                    # act node's alias resolution picks whichever's present.
+                    "url": {"type": "string"},
+                    "target": {"type": "string"},
+                    "selector": {"type": "string"},
+                    "text": {"type": "string"},
+                    "value": {"type": "string"},
+                    "name": {"type": "string"},
+                    "path": {"type": "string"},
+                    "mode": {"type": "string", "enum": ["viewport", "full"]},
+                    "folder": {"type": "string"},
+                    "query": {"type": "string"},
+                    "url_pattern": {"type": "string"},
+                    "url_filter": {"type": "string"},
+                    "name_template": {"type": "string"},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": 50},
+                    "index": {"type": "integer", "minimum": 0, "maximum": 49},
+                    "rationale": {"type": "string"},
+                },
+                "required": ["action"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["steps"],
+    "additionalProperties": False,
+    "title": "AgentPlan",
+}
+
 
 @dataclass
 class AgentDeps:
@@ -167,13 +223,35 @@ def make_plan_node(deps: AgentDeps):
                 current_snapshot=latest_snapshot,
             )},
         ]
-        out = await deps.planner.complete(messages=messages)
+        # Strict JSON schema so the planner can't emit bare-string steps,
+        # invented action names, or placeholder URLs. We unwrap the
+        # top-level {steps: [...]} envelope into a plain list for the
+        # rest of the graph.
+        # The wide try covers both (a) the adapter's auto-json-parse
+        # raising on non-JSON content AND (b) our own shape-check fails.
         try:
-            plan = _parse_json(out["content"])
-            if not isinstance(plan, list):
-                raise ValueError("planner did not return a list")
+            out = await deps.planner.complete(
+                messages=messages, schema=PLAN_RESPONSE_SCHEMA,
+            )
+            parsed = out.get("parsed")
+            if parsed is None:
+                parsed = _parse_json(out["content"])
         except Exception as e:
-            return {"status": "failed", "error": f"plan parse: {e}"}
+            return {"status": "failed", "error": f"plan parse: {e}",
+                    "plan_count": plan_count}
+        # Support both shapes: {"steps": [...]} (strict mode) and a raw
+        # list (legacy fallback if the provider ignored the schema).
+        if isinstance(parsed, dict) and "steps" in parsed:
+            plan = parsed["steps"]
+        elif isinstance(parsed, list):
+            plan = parsed
+        else:
+            return {"status": "failed", "plan_count": plan_count,
+                    "error": f"plan parse: expected array or {{steps:[]}}, "
+                             f"got {type(parsed).__name__}"}
+        if not isinstance(plan, list) or not plan:
+            return {"status": "failed", "plan_count": plan_count,
+                    "error": "plan parse: empty or not a list"}
 
         # Warm the cache for future samples of this task.
         if deps.plan_cache is not None:
