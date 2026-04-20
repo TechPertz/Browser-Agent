@@ -202,6 +202,25 @@ def make_act_node(deps: AgentDeps):
         if idx >= len(plan):
             return {"status": "extracting"}
         step = plan[idx]
+        # Defensive: Opus sometimes drifts from the schema and emits plan
+        # steps as bare strings or nested lists. Don't crash — surface a
+        # tool error so verify → replan kicks in with a valid plan.
+        if not isinstance(step, dict):
+            return {
+                "status": "verifying",
+                "last_tool_error": (
+                    f"plan step {idx} is not a JSON object (got "
+                    f"{type(step).__name__}: {str(step)[:80]}). Replan with "
+                    "each step as an object like "
+                    '{"action": "...", ...}'
+                ),
+                "consecutive_fails": state.get("consecutive_fails", 0) + 1,
+                "tool_calls": [{
+                    "tool_name": "agent.bad_step",
+                    "status": "error",
+                    "error": f"non-dict step at idx {idx}",
+                }],
+            }
         action = step.get("action")
         # Planners (Opus) naturally emit action-specific fields: url for
         # goto, selector+text for click, name for screenshot. Accept those
