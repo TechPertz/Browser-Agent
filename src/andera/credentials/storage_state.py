@@ -105,3 +105,32 @@ class SealedStateStore:
 
     def list_hosts(self) -> list[str]:
         return sorted(p.stem for p in self.root.glob("*.sealed"))
+
+    def load_merged(self) -> dict[str, Any] | None:
+        """Merge every sealed host into a single Playwright storage_state.
+
+        Multi-host tasks (e.g. start on GitHub, hop to Google then
+        LinkedIn) need ALL sealed sessions loaded into the browser
+        context, not just the start_url's. Cookies are domain-scoped
+        by the browser so merging is safe — each host only ever sees
+        its own cookies + localStorage.
+
+        Returns None when no hosts are sealed OR the master key is
+        missing (in which case every per-host load would raise anyway).
+        """
+        hosts = self.list_hosts()
+        if not hosts:
+            return None
+        merged: dict[str, Any] = {"cookies": [], "origins": []}
+        loaded_any = False
+        for h in hosts:
+            try:
+                state = self.load(h)
+            except Exception:
+                continue
+            if not state:
+                continue
+            merged["cookies"].extend(state.get("cookies") or [])
+            merged["origins"].extend(state.get("origins") or [])
+            loaded_any = True
+        return merged if loaded_any else None

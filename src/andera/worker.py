@@ -219,11 +219,14 @@ async def _execute_sample(
     host = host_of(start_url)
     storage_state: dict[str, Any] | None = None
     creds = SealedStateStore()
-    if host and creds.has(host):
-        try:
-            storage_state = creds.load(host)
-        except Exception:
-            storage_state = None
+    # Merge every sealed host's cookies into the context. Multi-host
+    # tasks need auth for hosts the agent discovers mid-sample (e.g.
+    # starts on github.com, hops to linkedin.com). Cookies stay
+    # domain-scoped in the browser, so merging is safe.
+    try:
+        storage_state = creds.load_merged()
+    except Exception:
+        storage_state = None
     audit.append(
         kind="sample.started", run_id=run_id, sample_id=sample_id,
         payload={

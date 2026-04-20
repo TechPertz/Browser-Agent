@@ -200,16 +200,17 @@ class RunWorkflow:
         sample_id = job["sample_id"]
         start_url = job.get("start_url")
         host = host_of(start_url)
-        # Load sealed storage_state if the operator has run
-        # `andera login <host>` previously. Missing blob or missing
-        # master key -> proceed unauthenticated; the preflight check
-        # below will fail the sample cleanly if the site requires auth.
+        # Load EVERY sealed session on this machine into the context.
+        # Multi-host tasks (start on github, hop to linkedin mid-sample)
+        # need all relevant cookies upfront — we don't know which hosts
+        # the agent will touch after the first goto. Cookies are domain-
+        # scoped; loading linkedin.com cookies alongside github.com ones
+        # can't cause cross-site leakage.
         storage_state: dict[str, Any] | None = None
-        if host and self.creds.has(host):
-            try:
-                storage_state = self.creds.load(host)
-            except Exception:
-                storage_state = None
+        try:
+            storage_state = self.creds.load_merged()
+        except Exception:
+            storage_state = None
         self.audit.append(
             kind="sample.started", run_id=self.run_id, sample_id=sample_id,
             payload={

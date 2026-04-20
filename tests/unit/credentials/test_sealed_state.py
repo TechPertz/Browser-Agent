@@ -69,3 +69,29 @@ def test_host_name_sanitized_no_path_escape(tmp_path):
     resolved = files[0].resolve()
     assert tmp_path.resolve() in resolved.parents
     assert "/" not in files[0].name
+
+
+def test_load_merged_concatenates_all_hosts(tmp_path):
+    """Multi-host tasks load cookies from every sealed session at once."""
+    store = SealedStateStore(tmp_path)
+    store.save("github", {
+        "cookies": [{"name": "gh_session", "value": "g1",
+                     "domain": "github.com", "path": "/"}],
+        "origins": [{"origin": "https://github.com", "localStorage": []}],
+    })
+    store.save("linkedin.com", {
+        "cookies": [{"name": "li_at", "value": "l1",
+                     "domain": "linkedin.com", "path": "/"}],
+        "origins": [{"origin": "https://linkedin.com", "localStorage": []}],
+    })
+    merged = store.load_merged()
+    assert merged is not None
+    names = sorted(c["name"] for c in merged["cookies"])
+    assert names == ["gh_session", "li_at"]
+    origins = sorted(o["origin"] for o in merged["origins"])
+    assert origins == ["https://github.com", "https://linkedin.com"]
+
+
+def test_load_merged_empty_returns_none(tmp_path):
+    store = SealedStateStore(tmp_path)
+    assert store.load_merged() is None
