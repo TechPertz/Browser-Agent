@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% set active = "connections" %}
+{% block title %}Signing in to {{ host }} · Andera{% endblock %}
+{% block content %}
+<h2><a href="/ui/connections" style="color: var(--dim);">← Connections</a>
+  / Signing in to <code>{{ host }}</code></h2>
+
+<div class="card" style="max-width: 720px;">
+  <p style="margin-top: 0;">
+    A Chromium window just opened on your desktop at
+    <code>{{ login_url }}</code>.
+  </p>
+  <ol style="color: var(--dim);">
+    <li>Switch to that window and sign in normally (2FA, SMS, anything).</li>
+    <li>When the site shows you as logged in, come back to this tab.</li>
+    <li>Click <strong>I'm signed in</strong> below — we'll seal the session
+        cookies to disk and close the window.</li>
+  </ol>
+
+  <div style="background: var(--panel); padding: 10px; border-radius: 4px;
+              color: var(--dim); font-size: 12px; margin: 16px 0;">
+    Current URL in that window:
+    <code id="current-url">{{ current_url }}</code>
+  </div>
+
+  <form action="/ui/connections/session/{{ session_id }}/save" method="post"
+        style="display: inline-block;">
+    <button type="submit">I'm signed in</button>
+  </form>
+  <form action="/ui/connections/session/{{ session_id }}/cancel" method="post"
+        style="display: inline-block; margin-left: 8px;">
+    <button type="submit" class="danger" style="background: transparent;
+            color: var(--dim); border: 1px solid var(--border);">Cancel</button>
+  </form>
+</div>
+
+<script>
+  // Poll the current URL so the user can see navigation happening in the
+  // popped window without having to switch tabs.
+  (function () {
+    const el = document.getElementById("current-url");
+    setInterval(async () => {
+      try {
+        const r = await fetch("/api/connections/session/{{ session_id }}/url");
+        if (!r.ok) return;
+        const j = await r.json();
+        if (j.url) el.textContent = j.url;
+      } catch (_) { /* session ended */ }
+    }, 1500);
+  })();
+</script>
+{% endblock %}

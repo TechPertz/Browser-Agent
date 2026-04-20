@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% set active = "connections" %}
+{% block title %}Add connection · Andera{% endblock %}
+{% block content %}
+<h2><a href="/ui/connections" style="color: var(--dim);">← Connections</a> / Add</h2>
+
+<div class="card" style="max-width: 640px;">
+  <p style="color: var(--dim); margin-top: 0;">
+    Opens a headed Chromium on this machine. Sign in normally (2FA, SMS,
+    whatever the site asks). When you're signed in, come back here and
+    click "I'm signed in" — we'll capture the session cookies and seal them
+    on disk so every future run reuses them.
+  </p>
+
+  <form action="/ui/connections/new" method="post">
+    <label>Host (short name used for the sealed blob)</label>
+    <input name="host" required placeholder="linkedin.com"
+           value="{{ host or '' }}" />
+    <div style="color: var(--dim); font-size: 11px; margin-top: 4px;">
+      Just the hostname, no path — e.g. <code>linkedin.com</code>,
+      <code>github.com</code>, <code>your-tenant.workday.com</code>.
+    </div>
+
+    <label style="margin-top: 16px;">Login URL</label>
+    <input name="login_url" required placeholder="https://www.linkedin.com/login"
+           value="{{ login_url or '' }}" />
+
+    <div style="margin-top: 24px;">
+      <button type="submit">Open sign-in window</button>
+    </div>
+
+    {% if error %}
+      <p class="verdict-fail" style="margin-top: 16px;">{{ error }}</p>
+    {% endif %}
+  </form>
+</div>
+{% endblock %}

@@ -2,33 +2,38 @@
 {% set active = "connections" %}
 {% block title %}Connections · Andera{% endblock %}
 {% block content %}
-<h2>Connections</h2>
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <h2 style="margin: 0;">Connections</h2>
+  <a href="/ui/connections/new" class="pill" style="text-decoration: none;
+     background: var(--accent); color: white; padding: 6px 14px;">+ Add connection</a>
+</div>
 <p style="color: var(--dim);">
-  Hosts whose browser login state is sealed on this machine. These are used
-  automatically when a task requires authenticated access.
+  Hosts whose browser login state is sealed on this machine. Runs that
+  touch these hosts start pre-authenticated — no re-login per sample.
 </p>
 
 {% if hosts %}
-<div class="card" style="max-width: 480px;">
+<div class="card" style="max-width: 640px;">
   <ul style="list-style: none; padding: 0; margin: 0;">
     {% for h in hosts %}
-      <li style="padding: 8px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between;">
-        <span><strong>{{ h }}</strong></span>
-        <span class="pill verdict-pass">sealed</span>
+      <li style="padding: 10px 0; border-bottom: 1px solid var(--border);
+                 display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <strong>{{ h }}</strong>
+          <span class="pill verdict-pass" style="margin-left: 8px;">sealed</span>
+        </div>
+        <form action="/ui/connections/{{ h }}/delete-form" method="post"
+              onsubmit="return confirm('Delete sealed session for {{ h }}? This forces re-login.');"
+              style="margin: 0;">
+          <button type="submit" style="background: transparent;
+                  color: var(--dim); border: 1px solid var(--border);
+                  padding: 4px 10px; font-size: 11px;">delete</button>
+        </form>
       </li>
     {% endfor %}
   </ul>
 </div>
 {% else %}
-<div class="empty">No sealed sessions yet.</div>
+<div class="empty">No sealed sessions yet. Click "+ Add connection" to sign into a host.</div>
 {% endif %}
-
-<div class="card" style="margin-top: 24px; max-width: 640px;">
-  <h2>Add a connection</h2>
-  <p style="color: var(--dim);">
-    Seal a new host from the CLI. The browser opens headed; complete the login;
-    press ENTER to save.
-  </p>
-  <pre>uv run andera login github --url https://github.com/login</pre>
-</div>
 {% endblock %}
