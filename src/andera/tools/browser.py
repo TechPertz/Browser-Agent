@@ -72,6 +72,18 @@ class SearchArgs(BaseModel):
     limit: int = 5
 
 
+class GotoSearchResultArgs(BaseModel):
+    """Goto the first result from the most recent search whose URL
+    contains `url_filter`. Paired with `search` to do the two-step dance
+    (search -> navigate to first matching result) without the planner
+    trying to reference future values from a static plan."""
+    # Substring that must appear in the result URL. Empty -> no filter,
+    # just take the Nth result.
+    url_filter: str = ""
+    # 0-based index into the filtered list of results.
+    index: int = 0
+
+
 class ExtractArgs(BaseModel):
     json_schema: dict[str, Any]
 

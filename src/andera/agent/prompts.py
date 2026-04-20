@@ -39,8 +39,14 @@ Each step MUST be one of:
       # ALWAYS prefer this over goto-ing a search engine URL — search engines
       # (Google, DuckDuckGo, Bing) block Playwright with consent walls and
       # anti-bot pages. Results land as a search observation: a list of
-      # {title, url, snippet}. Follow up with a `goto` to whichever result
-      # URL matches the task (e.g. first one containing "linkedin.com/in/").
+      # {title, url, snippet}.
+  - {"action": "goto_search_result", "url_filter": "<substring>", "index": 0}
+      # PAIRS WITH `search`. Navigates to the Nth result from the most recent
+      # search whose URL contains the substring. Use this because the plan is
+      # static — you CANNOT reference future step outputs with placeholders
+      # like "FIRST_RESULT_URL". The runtime looks up the URL at execution.
+      # Typical pattern: `search` -> `goto_search_result` -> `screenshot` ->
+      # repeat for the next item.
   - {"action": "extract", "target": "fields"}   # extracts per extract_schema
   - {"action": "done", "target": "ok"}
 

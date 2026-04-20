@@ -49,6 +49,8 @@ PLAN_MAX = 3
 NON_DOM_CHANGING_ACTIONS = {
     "screenshot", "screenshot_all", "visit_each_link",
     "scroll", "scroll_to", "extract", "search",
+    # goto_search_result DOES change the page — but the change is a
+    # navigation, which is handled like `goto`. Exclude from fast-path.
 }
 
 
@@ -270,6 +272,51 @@ def make_act_node(deps: AgentDeps):
                 query=query,
                 limit=int(step.get("limit", 5)),
             ))
+        elif action == "goto_search_result":
+            # Pull the most-recent search results from observations and
+            # pick one matching the filter. Lets the planner compose
+            # search -> goto without referencing future values statically.
+            url_filter = (
+                step.get("url_filter") or step.get("filter")
+                or step.get("target") or ""
+            )
+            idx_in_results = int(step.get("index", 0))
+            observations = state.get("observations") or []
+            results: list[dict[str, Any]] = []
+            for obs in reversed(observations):
+                data = obs.get("data") or {}
+                search = data.get("search")
+                if isinstance(search, dict) and search.get("results"):
+                    results = search["results"]
+                    break
+            candidates = (
+                [x for x in results
+                 if isinstance(x, dict) and url_filter in (x.get("url") or "")]
+                if url_filter else
+                [x for x in results if isinstance(x, dict)]
+            )
+            if idx_in_results < len(candidates):
+                chosen = candidates[idx_in_results].get("url") or ""
+                r = await deps.browser.goto(GotoArgs(url=chosen))
+            else:
+                # No matching search result — surface a synthetic tool
+                # error so verify/replan can re-plan with a different
+                # strategy (maybe broaden the filter or try next result).
+                import uuid as _uuid
+
+                from andera.contracts import ToolResult
+                r = ToolResult(
+                    call_id=_uuid.uuid4().hex[:12],
+                    tool_name="agent.goto_search_result",
+                    status="error",
+                    data={"url_filter": url_filter, "index": idx_in_results,
+                          "available_results": len(results)},
+                    error=(
+                        f"no search result matched url_filter={url_filter!r} "
+                        f"at index={idx_in_results} "
+                        f"(total results: {len(results)})"
+                    ),
+                )
         elif action == "scroll":
             r = await deps.browser.scroll(ScrollArgs(amount=(target or value or "down")))
         elif action == "scroll_to":
